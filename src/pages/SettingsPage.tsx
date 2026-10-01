@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import type { CustomField, CustomFieldType } from "../types";
+import type { CustomField, CustomFieldType, PaletteId } from "../types";
+import { PALETTES } from "../palettes";
 import { emptyData, sampleData } from "../data/seed";
 import { normalizeData } from "../store";
 import { prepareLogo } from "../components/logo";
@@ -103,6 +104,31 @@ export function SettingsPage({ data, setData }: PageProps) {
               }}
             />
           </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <h3>Colores de la aplicación</h3>
+        <p className="muted small">Elige la paleta de los paneles, la barra superior y los botones. Se adapta también al modo oscuro.</p>
+        <div className="palette-options" role="radiogroup" aria-label="Paleta de colores">
+          {(Object.keys(PALETTES) as PaletteId[]).map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={s.palette === id}
+              className={`palette-option ${s.palette === id ? "selected" : ""}`}
+              onClick={() => setSettings({ palette: id })}
+            >
+              <span className="palette-swatches">
+                {PALETTES[id].swatches.map((c) => <span key={c} style={{ background: c }} title={c} />)}
+              </span>
+              <span className="palette-name">
+                {PALETTES[id].name}
+                {s.palette === id && <span className="badge info">en uso</span>}
+              </span>
+            </button>
+          ))}
         </div>
       </section>
 

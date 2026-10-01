@@ -10,7 +10,11 @@ export interface Settings {
   currency: string;
   /** Logo de la empresa cliente como data URL (vacío = sin logo). */
   logo: string;
+  /** Paleta de colores de la interfaz. */
+  palette: PaletteId;
 }
+
+export type PaletteId = "menta" | "turquesa";
 
 export type CustomFieldType = "text" | "number" | "date" | "select";
 

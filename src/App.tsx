@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePayrollData } from "./store";
 import { SettingsPage } from "./pages/SettingsPage";
 import { PositionsPage } from "./pages/PositionsPage";
@@ -30,6 +30,9 @@ function initialPage(): PageId {
 export function App() {
   const [data, setData] = usePayrollData();
   const [page, setPage] = useState<PageId>(initialPage);
+  useEffect(() => {
+    document.documentElement.dataset.palette = data.settings.palette;
+  }, [data.settings.palette]);
   const current = PAGES.find((p) => p.id === page)!;
   const go = (id: PageId) => {
     setPage(id);
