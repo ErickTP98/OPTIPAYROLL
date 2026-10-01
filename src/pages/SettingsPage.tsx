@@ -4,6 +4,7 @@ import { PALETTES } from "../palettes";
 import { emptyData, sampleData } from "../data/seed";
 import { normalizeData } from "../store";
 import { prepareLogo } from "../components/logo";
+import { exportExcel } from "../export/save";
 import { formatMoney, parseNumber, uid } from "../utils";
 import { addBudgetYear, removeBudgetYear } from "../engine/years";
 import { summarizeYears } from "../engine/calculate";
@@ -176,6 +177,7 @@ export function SettingsPage({ data, setData }: PageProps) {
           o abrirlo en otro equipo.
         </p>
         <div className="actions">
+          <button className="btn primary" onClick={() => exportExcel(data)}>Exportar todo a Excel</button>
           <button className="btn" onClick={exportJson}>Exportar respaldo (JSON)</button>
           <button className="btn" onClick={() => fileRef.current?.click()}>Importar respaldo</button>
           <input

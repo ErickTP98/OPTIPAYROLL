@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { downloadFile } from "../utils";
+import { saveFile } from "../export/save";
 import { Modal } from "./ui";
 
 /**
@@ -88,13 +88,12 @@ export function DialogHost() {
         <>
           {copied && <span className="muted small">Copiado. Pégalo en Excel o en un archivo de texto.</span>}
           <button className="btn" onClick={copy}>Copiar al portapapeles</button>
-          <button className="btn primary" onClick={() => downloadFile(dialog.name, dialog.content, dialog.type)}>Descargar archivo</button>
+          <button className="btn primary" onClick={() => saveFile(dialog.name, dialog.content, dialog.type)}>Descargar archivo</button>
         </>
       }
     >
       <p className="muted">
-        Descarga el archivo o, si la descarga no está disponible en este entorno, copia el contenido y pégalo en Excel
-        o guárdalo como <code>{dialog.name}</code>.
+        Descarga el archivo o copia el contenido y pégalo en Excel o en un archivo <code>{dialog.name}</code>.
       </p>
       <textarea id="export-content" className="export-box" readOnly rows={14} value={dialog.content.replace(/^﻿/, "")} />
     </Modal>

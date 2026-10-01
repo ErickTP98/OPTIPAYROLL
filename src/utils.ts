@@ -30,16 +30,6 @@ export function monthsLabel(flags: boolean[]): string {
   return flags.map((f, i) => (f ? MONTH_SHORT[i] : null)).filter(Boolean).join(", ");
 }
 
-export function downloadFile(name: string, content: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 /** CSV con separador ";" y BOM para que Excel en español lo abra correctamente. */
 export function toCsv(rows: (string | number)[][]): string {
   const esc = (v: string | number) => {

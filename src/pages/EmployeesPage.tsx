@@ -4,6 +4,7 @@ import { allMonths, employeeYear, formatMoney, monthsLabel, uid, withEmployeeYea
 import { fixedMonthlyAmount, YearlyConceptAmounts } from "../components/ConceptAmounts";
 import { EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
 import { ask, confirmDelete, notify } from "../components/dialogs";
+import { exportExcel } from "../export/save";
 import type { PageProps } from "./types";
 
 const newEmployee = (n: number, year: number): Employee => ({
@@ -59,6 +60,7 @@ export function EmployeesPage({ data, setData }: PageProps) {
         description="Datos personales, puesto asignado y, por cada año, los meses que labora y los montos de cada concepto."
         actions={
           <>
+            <button className="btn" onClick={() => exportExcel(data)}>Exportar a Excel</button>
             <button className="btn" onClick={() => setEditing({ ...newEmployee(data.employees.length + 1, year), isVacancy: true, code: `V${String(data.employees.length + 1).padStart(3, "0")}` })}>
               + Vacante
             </button>

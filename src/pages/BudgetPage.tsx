@@ -6,6 +6,7 @@ import {
 import { formatMoney, MONTH_NAMES, MONTH_SHORT, toCsv } from "../utils";
 import { EmptyState, Modal, PageHeader } from "../components/ui";
 import { exportFile } from "../components/dialogs";
+import { exportExcel } from "../export/save";
 import { employeeName } from "./EmployeesPage";
 import type { PageProps } from "./types";
 
@@ -172,6 +173,7 @@ export function BudgetPage({ data }: PageProps) {
         logo={data.settings.logo || undefined}
         actions={
           <>
+            <button className="btn primary" onClick={() => exportExcel(data)}>Exportar a Excel</button>
             <button className="btn" onClick={exportCsv}>Exportar vista (CSV)</button>
             <button className="btn" onClick={exportDetailCsv}>Exportar detalle (CSV)</button>
           </>
