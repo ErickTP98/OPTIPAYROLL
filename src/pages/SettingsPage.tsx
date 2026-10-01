@@ -2,8 +2,9 @@ import { useRef, useState } from "react";
 import type { CustomField, CustomFieldType } from "../types";
 import { emptyData, sampleData } from "../data/seed";
 import { normalizeData } from "../store";
-import { downloadFile, parseNumber, uid } from "../utils";
-import { confirmDelete, Field, Modal, PageHeader } from "../components/ui";
+import { parseNumber, uid } from "../utils";
+import { Field, Modal, PageHeader } from "../components/ui";
+import { ask, confirmDelete, exportFile, notify } from "../components/dialogs";
 import type { PageProps } from "./types";
 
 const FIELD_TYPES: Record<CustomFieldType, string> = {
@@ -29,8 +30,8 @@ export function SettingsPage({ data, setData }: PageProps) {
     setEditing(null);
   };
 
-  const removeField = (f: CustomField) => {
-    if (!confirmDelete(`el campo «${f.label}»`)) return;
+  const removeField = async (f: CustomField) => {
+    if (!(await confirmDelete(`el campo «${f.label}»`))) return;
     setData((d) => ({
       ...d,
       customFields: d.customFields.filter((x) => x.id !== f.id),
@@ -42,7 +43,7 @@ export function SettingsPage({ data, setData }: PageProps) {
   };
 
   const exportJson = () =>
-    downloadFile(
+    exportFile(
       `optipayroll-${s.year}.json`,
       JSON.stringify(data, null, 2),
       "application/json",
@@ -51,9 +52,9 @@ export function SettingsPage({ data, setData }: PageProps) {
   const importJson = async (file: File) => {
     try {
       const imported = normalizeData(JSON.parse(await file.text()));
-      if (window.confirm("Se reemplazarán todos los datos actuales por los del archivo. ¿Continuar?")) setData(imported);
+      if (await ask("Se reemplazarán todos los datos actuales por los del archivo. ¿Continuar?")) setData(imported);
     } catch (err) {
-      window.alert(`No se pudo importar: ${err instanceof Error ? err.message : String(err)}`);
+      notify(`No se pudo importar: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -133,13 +134,13 @@ export function SettingsPage({ data, setData }: PageProps) {
           />
           <button
             className="btn"
-            onClick={() => window.confirm("¿Cargar los datos de ejemplo? Se reemplazarán los datos actuales.") && setData(sampleData())}
+            onClick={async () => (await ask("¿Cargar los datos de ejemplo? Se reemplazarán los datos actuales.")) && setData(sampleData())}
           >
             Cargar ejemplo
           </button>
           <button
             className="btn danger"
-            onClick={() => window.confirm("¿Borrar todos los datos y empezar de cero?") && setData(emptyData())}
+            onClick={async () => (await ask("¿Borrar todos los datos y empezar de cero?")) && setData(emptyData())}
           >
             Empezar de cero
           </button>

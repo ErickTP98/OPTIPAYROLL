@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import type { CustomField, Employee } from "../types";
 import { allMonths, formatMoney, monthsLabel, uid } from "../utils";
 import { ConceptAmounts } from "../components/ConceptAmounts";
-import { confirmDelete, EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
+import { EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
+import { ask, confirmDelete } from "../components/dialogs";
 import type { PageProps } from "./types";
 
 const newEmployee = (n: number): Employee => ({
@@ -37,8 +38,8 @@ export function EmployeesPage({ data, setData }: PageProps) {
     setEditing(null);
   };
 
-  const remove = (e: Employee) => {
-    if (!confirmDelete(`a ${employeeName(e)} (${e.code})`)) return;
+  const remove = async (e: Employee) => {
+    if (!(await confirmDelete(`a ${employeeName(e)} (${e.code})`))) return;
     setData((d) => ({
       ...d,
       employees: d.employees.filter((x) => x.id !== e.id),
@@ -139,9 +140,9 @@ function EmployeeModal({ employee, data, onSave, onClose }: {
   const position = data.positions.find((p) => p.id === e.positionId);
   const valid = e.code.trim() !== "" && e.positionId !== "" && (e.isVacancy || e.firstName.trim() !== "" || e.lastName.trim() !== "");
 
-  const copyFromPosition = () => {
+  const copyFromPosition = async () => {
     if (!position) return;
-    if (e.concepts.length && !window.confirm("Se reemplazarán los montos actuales por los del puesto. ¿Continuar?")) return;
+    if (e.concepts.length && !(await ask("Se reemplazarán los montos actuales por los del puesto. ¿Continuar?"))) return;
     set({ concepts: position.concepts.map((c) => ({ ...c })) });
   };
 

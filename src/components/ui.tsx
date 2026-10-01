@@ -98,7 +98,3 @@ export function PageHeader({ title, description, actions }: { title: string; des
 export function EmptyState({ children }: { children: ReactNode }) {
   return <div className="empty">{children}</div>;
 }
-
-export function confirmDelete(what: string): boolean {
-  return window.confirm(`¿Eliminar ${what}? Esta acción no se puede deshacer.`);
-}

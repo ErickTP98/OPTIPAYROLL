@@ -8,6 +8,7 @@ import { RulesPage } from "./pages/RulesPage";
 import { IncreasesPage } from "./pages/IncreasesPage";
 import { BudgetPage } from "./pages/BudgetPage";
 import type { PageProps } from "./pages/types";
+import { DialogHost } from "./components/dialogs";
 
 const PAGES = [
   { id: "presupuesto", label: "Presupuesto", Component: BudgetPage },
@@ -55,6 +56,7 @@ export function App() {
       <main className="content">
         <current.Component data={data} setData={setData} />
       </main>
+      <DialogHost />
     </div>
   );
 }

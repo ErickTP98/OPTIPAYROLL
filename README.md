@@ -68,3 +68,8 @@ src/
   pages/                 pantallas (presupuesto, trabajadores, puestos, conceptos, reglas, incrementos, empresa)
   components/            componentes compartidos
 ```
+
+### Versión de un solo archivo
+
+`npm run build:single` genera `dist/optipayroll.html`, una sola página con todo incrustado que se puede abrir
+sin servidor o publicar como página independiente.

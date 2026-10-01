@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { Concept, ConceptType } from "../types";
 import { allMonths, monthsLabel, uid } from "../utils";
-import { CheckList, confirmDelete, EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
+import { CheckList, EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
+import { confirmDelete } from "../components/dialogs";
 import type { PageProps } from "./types";
 
 export const CONCEPT_TYPES: Record<ConceptType, string> = {
@@ -25,8 +26,8 @@ export function ConceptsPage({ data, setData }: PageProps) {
     setEditing(null);
   };
 
-  const remove = (c: Concept) => {
-    if (!confirmDelete(`el concepto «${c.name}» (también se quitará de trabajadores y puestos)`)) return;
+  const remove = async (c: Concept) => {
+    if (!(await confirmDelete(`el concepto «${c.name}» (también se quitará de trabajadores y puestos)`))) return;
     setData((d) => ({
       ...d,
       concepts: d.concepts.filter((x) => x.id !== c.id),

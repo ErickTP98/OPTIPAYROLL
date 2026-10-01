@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { Position } from "../types";
 import { formatMoney, uid } from "../utils";
 import { ConceptAmounts } from "../components/ConceptAmounts";
-import { confirmDelete, EmptyState, Field, Modal, PageHeader } from "../components/ui";
+import { EmptyState, Field, Modal, PageHeader } from "../components/ui";
+import { confirmDelete, notify } from "../components/dialogs";
 import type { PageProps } from "./types";
 
 const newPosition = (): Position => ({
@@ -21,13 +22,13 @@ export function PositionsPage({ data, setData }: PageProps) {
     setEditing(null);
   };
 
-  const remove = (p: Position) => {
+  const remove = async (p: Position) => {
     const used = data.employees.filter((e) => e.positionId === p.id).length;
     if (used > 0) {
-      window.alert(`El puesto tiene ${used} trabajador(es) o vacante(s) asignados. Reasígnalos antes de eliminarlo.`);
+      notify(`El puesto tiene ${used} trabajador(es) o vacante(s) asignados. Reasígnalos antes de eliminarlo.`);
       return;
     }
-    if (confirmDelete(`el puesto «${p.name}»`)) setData((d) => ({ ...d, positions: d.positions.filter((x) => x.id !== p.id) }));
+    if (await confirmDelete(`el puesto «${p.name}»`)) setData((d) => ({ ...d, positions: d.positions.filter((x) => x.id !== p.id) }));
   };
 
   return (

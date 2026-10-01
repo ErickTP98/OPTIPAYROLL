@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { Increase, IncreaseScope } from "../types";
 import { MONTH_NAMES, parseNumber, uid } from "../utils";
-import { CheckList, confirmDelete, EmptyState, Field, Modal, PageHeader } from "../components/ui";
+import { CheckList, EmptyState, Field, Modal, PageHeader } from "../components/ui";
+import { confirmDelete } from "../components/dialogs";
 import { employeeName } from "./EmployeesPage";
 import type { PageProps } from "./types";
 
@@ -27,8 +28,8 @@ export function IncreasesPage({ data, setData }: PageProps) {
     setEditing(null);
   };
 
-  const remove = (i: Increase) => {
-    if (confirmDelete(`el incremento «${i.name}»`)) setData((d) => ({ ...d, increases: d.increases.filter((x) => x.id !== i.id) }));
+  const remove = async (i: Increase) => {
+    if (await confirmDelete(`el incremento «${i.name}»`)) setData((d) => ({ ...d, increases: d.increases.filter((x) => x.id !== i.id) }));
   };
 
   const targetLabel = (i: Increase) => {

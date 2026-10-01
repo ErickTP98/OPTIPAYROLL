@@ -3,7 +3,8 @@ import type { BaseMode, Rule, RuleKind, RuleMethod } from "../types";
 import { compileFormula } from "../engine/formula";
 import { RESERVED_VARIABLES } from "../engine/calculate";
 import { allMonths, monthsLabel, parseNumber, uid } from "../utils";
-import { CheckList, confirmDelete, EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
+import { CheckList, EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
+import { confirmDelete } from "../components/dialogs";
 import type { PageProps } from "./types";
 
 export const RULE_KINDS: Record<RuleKind, string> = { beneficio: "Beneficio social", aporte: "Aporte patronal" };
@@ -35,8 +36,8 @@ export function RulesPage({ data, setData }: PageProps) {
     setEditing(null);
   };
 
-  const remove = (r: Rule) => {
-    if (!confirmDelete(`la regla «${r.name}»`)) return;
+  const remove = async (r: Rule) => {
+    if (!(await confirmDelete(`la regla «${r.name}»`))) return;
     setData((d) => ({
       ...d,
       rules: d.rules.filter((x) => x.id !== r.id).map((x) => ({ ...x, includeRules: x.includeRules.filter((id) => id !== r.id) })),

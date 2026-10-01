@@ -3,8 +3,9 @@ import {
   calculateBudget, groupBudgets, linesSummary,
   type BudgetLine, type EmployeeBudget, type GroupSummary, type LineGroup,
 } from "../engine/calculate";
-import { downloadFile, formatMoney, MONTH_NAMES, MONTH_SHORT, toCsv } from "../utils";
+import { formatMoney, MONTH_NAMES, MONTH_SHORT, toCsv } from "../utils";
 import { EmptyState, Modal, PageHeader } from "../components/ui";
+import { exportFile } from "../components/dialogs";
 import { employeeName } from "./EmployeesPage";
 import type { PageProps } from "./types";
 
@@ -127,7 +128,7 @@ export function BudgetPage({ data }: PageProps) {
       [...headers, ...MONTH_NAMES, "Total"],
       ...[...rows, totalRow].map((r) => [...r.csvLabel, ...new Array(pad - r.csvLabel.length).fill(""), ...r.months, r.total]),
     ]);
-    downloadFile(`presupuesto-${data.settings.year}-${view}.csv`, csv, "text/csv;charset=utf-8");
+    exportFile(`presupuesto-${data.settings.year}-${view}.csv`, csv, "text/csv;charset=utf-8");
   };
 
   const exportDetailCsv = () => {
@@ -137,7 +138,7 @@ export function BudgetPage({ data }: PageProps) {
         out.push([b.employee.code, employeeName(b.employee), b.position?.name ?? "", b.position?.area ?? "", b.position?.costCenter ?? "", GROUP_LABEL[l.group], `${l.code} ${l.name}`, ...l.months, l.total]);
       }
     }
-    downloadFile(`presupuesto-${data.settings.year}-detalle.csv`, toCsv(out), "text/csv;charset=utf-8");
+    exportFile(`presupuesto-${data.settings.year}-detalle.csv`, toCsv(out), "text/csv;charset=utf-8");
   };
 
   const headcount = items.filter((b) => !b.employee.isVacancy).length;
