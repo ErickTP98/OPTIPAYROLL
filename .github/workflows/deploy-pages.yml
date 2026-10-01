@@ -1,5 +1,8 @@
 name: Publicar en GitHub Pages
 
+# Acceso público cerrado: solo se publica una página de «sitio no disponible».
+# La app ya no se despliega en GitHub Pages.
+
 on:
   push:
     branches: ["claude/intelligent-cannon-8010zu", "main"]
@@ -19,17 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: .github/pages-closed
 
   deploy:
     needs: build

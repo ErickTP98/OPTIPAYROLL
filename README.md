@@ -94,7 +94,6 @@ sin servidor o publicar como página independiente.
 
 ## Publicación web (GitHub Pages)
 
-El flujo `.github/workflows/deploy-pages.yml` prueba, compila y publica la app en GitHub Pages en cada push a la rama
-principal. Para activarlo una sola vez: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-La dirección queda como `https://<usuario>.github.io/<repositorio>/`. En cuentas gratuitas, GitHub Pages requiere
-que el repositorio sea público.
+El acceso público por GitHub Pages está **cerrado**: el flujo `.github/workflows/deploy-pages.yml` solo publica una
+página de «sitio no disponible» (`.github/pages-closed/`). Para eliminar la dirección por completo:
+**Settings → Pages → Unpublish site** (o desactivar Pages).
