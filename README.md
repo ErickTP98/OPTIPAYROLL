@@ -91,3 +91,10 @@ src/
 
 `npm run build:single` genera `dist/optipayroll.html`, una sola página con todo incrustado que se puede abrir
 sin servidor o publicar como página independiente.
+
+## Publicación web (GitHub Pages)
+
+El flujo `.github/workflows/deploy-pages.yml` prueba, compila y publica la app en GitHub Pages en cada push a la rama
+principal. Para activarlo una sola vez: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+La dirección queda como `https://<usuario>.github.io/<repositorio>/`. En cuentas gratuitas, GitHub Pages requiere
+que el repositorio sea público.
