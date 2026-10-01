@@ -1,0 +1,60 @@
+import { useState } from "react";
+import { usePayrollData } from "./store";
+import { SettingsPage } from "./pages/SettingsPage";
+import { PositionsPage } from "./pages/PositionsPage";
+import { EmployeesPage } from "./pages/EmployeesPage";
+import { ConceptsPage } from "./pages/ConceptsPage";
+import { RulesPage } from "./pages/RulesPage";
+import { IncreasesPage } from "./pages/IncreasesPage";
+import { BudgetPage } from "./pages/BudgetPage";
+import type { PageProps } from "./pages/types";
+
+const PAGES = [
+  { id: "presupuesto", label: "Presupuesto", Component: BudgetPage },
+  { id: "trabajadores", label: "Trabajadores", Component: EmployeesPage },
+  { id: "puestos", label: "Puestos", Component: PositionsPage },
+  { id: "conceptos", label: "Conceptos", Component: ConceptsPage },
+  { id: "reglas", label: "Beneficios y aportes", Component: RulesPage },
+  { id: "incrementos", label: "Incrementos", Component: IncreasesPage },
+  { id: "empresa", label: "Empresa", Component: SettingsPage },
+] as const satisfies readonly { id: string; label: string; Component: (p: PageProps) => unknown }[];
+
+type PageId = (typeof PAGES)[number]["id"];
+
+function initialPage(): PageId {
+  const h = window.location.hash.slice(1);
+  return (PAGES.find((p) => p.id === h)?.id ?? "presupuesto") as PageId;
+}
+
+export function App() {
+  const [data, setData] = usePayrollData();
+  const [page, setPage] = useState<PageId>(initialPage);
+  const current = PAGES.find((p) => p.id === page)!;
+  const go = (id: PageId) => {
+    setPage(id);
+    window.history.replaceState(null, "", `#${id}`);
+  };
+  return (
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+          <span className="logo">OP</span>
+          <div>
+            <strong>OptiPayroll</strong>
+            <span className="muted small">{data.settings.companyName || "Presupuesto de nóminas"} · {data.settings.year}</span>
+          </div>
+        </div>
+        <nav className="nav">
+          {PAGES.map((p) => (
+            <button key={p.id} className={p.id === page ? "active" : ""} onClick={() => go(p.id)}>
+              {p.label}
+            </button>
+          ))}
+        </nav>
+      </header>
+      <main className="content">
+        <current.Component data={data} setData={setData} />
+      </main>
+    </div>
+  );
+}

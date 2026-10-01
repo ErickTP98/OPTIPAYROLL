@@ -1,0 +1,240 @@
+import { useMemo, useState } from "react";
+import type { CustomField, Employee } from "../types";
+import { allMonths, formatMoney, monthsLabel, uid } from "../utils";
+import { ConceptAmounts } from "../components/ConceptAmounts";
+import { confirmDelete, EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
+import type { PageProps } from "./types";
+
+const newEmployee = (n: number): Employee => ({
+  id: uid(), code: `T${String(n).padStart(3, "0")}`, isVacancy: false, firstName: "", lastName: "",
+  docType: "DNI", docNumber: "", birthDate: "", gender: "", email: "", phone: "", address: "",
+  hireDate: "", contractType: "", positionId: "", months: allMonths(), custom: {}, concepts: [],
+});
+
+export const employeeName = (e: Employee) =>
+  e.isVacancy ? "Vacante" : [e.firstName, e.lastName].filter(Boolean).join(" ") || "(sin nombre)";
+
+export function EmployeesPage({ data, setData }: PageProps) {
+  const [editing, setEditing] = useState<Employee | null>(null);
+  const [query, setQuery] = useState("");
+  const [positionFilter, setPositionFilter] = useState("");
+  const cur = data.settings.currency;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return data.employees.filter((e) => {
+      if (positionFilter && e.positionId !== positionFilter) return false;
+      if (!q) return true;
+      return [e.code, e.firstName, e.lastName, e.docNumber, e.email].join(" ").toLowerCase().includes(q);
+    });
+  }, [data.employees, query, positionFilter]);
+
+  const save = (e: Employee) => {
+    setData((d) => ({
+      ...d,
+      employees: d.employees.some((x) => x.id === e.id) ? d.employees.map((x) => (x.id === e.id ? e : x)) : [...d.employees, e],
+    }));
+    setEditing(null);
+  };
+
+  const remove = (e: Employee) => {
+    if (!confirmDelete(`a ${employeeName(e)} (${e.code})`)) return;
+    setData((d) => ({
+      ...d,
+      employees: d.employees.filter((x) => x.id !== e.id),
+      increases: d.increases.map((i) => ({ ...i, targets: i.scope === "trabajador" ? i.targets.filter((t) => t !== e.id) : i.targets })),
+    }));
+  };
+
+  const duplicate = (e: Employee) =>
+    setEditing({ ...structuredClone(e), id: uid(), code: `${e.code}-copia`, firstName: e.isVacancy ? "" : e.firstName });
+
+  return (
+    <>
+      <PageHeader
+        title="Trabajadores y vacantes"
+        description="Datos personales, puesto asignado, meses que labora y montos de cada concepto de nómina."
+        actions={
+          <>
+            <button className="btn" onClick={() => setEditing({ ...newEmployee(data.employees.length + 1), isVacancy: true, code: `V${String(data.employees.length + 1).padStart(3, "0")}` })}>
+              + Vacante
+            </button>
+            <button className="btn primary" onClick={() => setEditing(newEmployee(data.employees.length + 1))}>+ Nuevo trabajador</button>
+          </>
+        }
+      />
+      <div className="toolbar">
+        <input className="search" placeholder="Buscar por código, nombre, documento…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <select value={positionFilter} onChange={(e) => setPositionFilter(e.target.value)}>
+          <option value="">Todos los puestos</option>
+          {data.positions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </div>
+      {filtered.length === 0 ? (
+        <EmptyState>{data.employees.length ? "No hay coincidencias." : "Aún no hay trabajadores registrados."}</EmptyState>
+      ) : (
+        <div className="card table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Código</th><th>Nombre</th><th>Documento</th><th>Puesto</th><th>Área</th>
+                <th>Meses que labora</th><th className="num">Monto mensual</th><th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((e) => {
+                const pos = data.positions.find((p) => p.id === e.positionId);
+                return (
+                  <tr key={e.id}>
+                    <td><code>{e.code}</code></td>
+                    <td>
+                      {employeeName(e)}
+                      {e.isVacancy && <span className="badge warn">vacante</span>}
+                    </td>
+                    <td>{e.docNumber ? `${e.docType} ${e.docNumber}` : "—"}</td>
+                    <td>{pos?.name ?? <span className="badge danger">sin puesto</span>}</td>
+                    <td>{pos?.area}</td>
+                    <td className="muted small">{monthsLabel(e.months)}</td>
+                    <td className="num">{formatMoney(e.concepts.reduce((s, c) => s + c.amount, 0), cur)}</td>
+                    <td className="row-actions">
+                      <button className="btn-link" onClick={() => setEditing(e)}>Editar</button>
+                      <button className="btn-link" onClick={() => duplicate(e)}>Duplicar</button>
+                      <button className="btn-link danger" onClick={() => remove(e)}>Eliminar</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && <EmployeeModal employee={editing} data={data} onSave={save} onClose={() => setEditing(null)} />}
+    </>
+  );
+}
+
+function CustomInput({ field, value, onChange }: { field: CustomField; value: string; onChange: (v: string) => void }) {
+  if (field.type === "select") {
+    return (
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">—</option>
+        {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+  return <input type={field.type} value={value} onChange={(e) => onChange(e.target.value)} />;
+}
+
+type Tab = "personal" | "puesto" | "conceptos";
+
+function EmployeeModal({ employee, data, onSave, onClose }: {
+  employee: Employee;
+  data: PageProps["data"];
+  onSave: (e: Employee) => void;
+  onClose: () => void;
+}) {
+  const [e, setE] = useState(employee);
+  const [tab, setTab] = useState<Tab>(employee.isVacancy ? "puesto" : "personal");
+  const set = (patch: Partial<Employee>) => setE({ ...e, ...patch });
+  const position = data.positions.find((p) => p.id === e.positionId);
+  const valid = e.code.trim() !== "" && e.positionId !== "" && (e.isVacancy || e.firstName.trim() !== "" || e.lastName.trim() !== "");
+
+  const copyFromPosition = () => {
+    if (!position) return;
+    if (e.concepts.length && !window.confirm("Se reemplazarán los montos actuales por los del puesto. ¿Continuar?")) return;
+    set({ concepts: position.concepts.map((c) => ({ ...c })) });
+  };
+
+  return (
+    <Modal
+      wide
+      title={employee.firstName || employee.lastName || employee.isVacancy ? `${employeeName(employee)} · ${employee.code}` : "Nuevo trabajador"}
+      onClose={onClose}
+      footer={
+        <>
+          {!valid && <span className="muted small">Completa código, nombre (o marca como vacante) y puesto.</span>}
+          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn primary" disabled={!valid} onClick={() => onSave(e)}>Guardar</button>
+        </>
+      }
+    >
+      <div className="tabs-inline">
+        <button className={tab === "personal" ? "active" : ""} onClick={() => setTab("personal")}>Datos personales</button>
+        <button className={tab === "puesto" ? "active" : ""} onClick={() => setTab("puesto")}>Puesto y meses</button>
+        <button className={tab === "conceptos" ? "active" : ""} onClick={() => setTab("conceptos")}>Conceptos de nómina</button>
+      </div>
+
+      {tab === "personal" && (
+        <div className="grid">
+          <Field label="Código"><input value={e.code} onChange={(ev) => set({ code: ev.target.value })} /></Field>
+          <label className="field check-field">
+            <input type="checkbox" checked={e.isVacancy} onChange={(ev) => set({ isVacancy: ev.target.checked })} />
+            Es una vacante (puesto por cubrir)
+          </label>
+          <span />
+          {!e.isVacancy && (
+            <>
+              <Field label="Nombres"><input value={e.firstName} onChange={(ev) => set({ firstName: ev.target.value })} /></Field>
+              <Field label="Apellidos"><input value={e.lastName} onChange={(ev) => set({ lastName: ev.target.value })} /></Field>
+              <Field label="Sexo">
+                <select value={e.gender} onChange={(ev) => set({ gender: ev.target.value })}>
+                  <option value="">—</option><option value="F">Femenino</option><option value="M">Masculino</option><option value="O">Otro</option>
+                </select>
+              </Field>
+              <Field label="Tipo de documento">
+                <select value={e.docType} onChange={(ev) => set({ docType: ev.target.value })}>
+                  {["DNI", "CE", "Pasaporte", "RUC", "Otro"].map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </Field>
+              <Field label="Número de documento"><input value={e.docNumber} onChange={(ev) => set({ docNumber: ev.target.value })} /></Field>
+              <Field label="Fecha de nacimiento"><input type="date" value={e.birthDate} onChange={(ev) => set({ birthDate: ev.target.value })} /></Field>
+              <Field label="Correo"><input type="email" value={e.email} onChange={(ev) => set({ email: ev.target.value })} /></Field>
+              <Field label="Teléfono"><input value={e.phone} onChange={(ev) => set({ phone: ev.target.value })} /></Field>
+              <Field label="Fecha de ingreso"><input type="date" value={e.hireDate} onChange={(ev) => set({ hireDate: ev.target.value })} /></Field>
+              <Field label="Dirección" span={3}><input value={e.address} onChange={(ev) => set({ address: ev.target.value })} /></Field>
+            </>
+          )}
+          {data.customFields.map((f) => (
+            <Field key={f.id} label={f.label}>
+              <CustomInput field={f} value={e.custom[f.id] ?? ""} onChange={(v) => set({ custom: { ...e.custom, [f.id]: v } })} />
+            </Field>
+          ))}
+        </div>
+      )}
+
+      {tab === "puesto" && (
+        <>
+          <div className="grid">
+            <Field label="Puesto de trabajo">
+              <select value={e.positionId} onChange={(ev) => set({ positionId: ev.target.value })}>
+                <option value="">— Selecciona —</option>
+                {data.positions.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Área"><input value={position?.area ?? ""} disabled /></Field>
+            <Field label="Centro de costo"><input value={position?.costCenter ?? ""} disabled /></Field>
+            <Field label="Tipo de contrato">
+              <input list="contracts" value={e.contractType} onChange={(ev) => set({ contractType: ev.target.value })} />
+              <datalist id="contracts">
+                {["Indeterminado", "Plazo fijo", "Tiempo parcial", "Practicante", "Locación de servicios"].map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </Field>
+          </div>
+          <h3>Meses que labora en {data.settings.year}</h3>
+          <p className="muted">Solo se presupuestan conceptos, beneficios y aportes en los meses marcados.</p>
+          <MonthPicker value={e.months} onChange={(months) => set({ months })} />
+        </>
+      )}
+
+      {tab === "conceptos" && (
+        <>
+          <div className="card-title">
+            <p className="muted">Monto mensual de cada concepto (antes de incrementos).</p>
+            <button className="btn" disabled={!position} onClick={copyFromPosition}>Copiar montos del puesto</button>
+          </div>
+          <ConceptAmounts concepts={data.concepts} value={e.concepts} onChange={(concepts) => set({ concepts })} />
+        </>
+      )}
+    </Modal>
+  );
+}
