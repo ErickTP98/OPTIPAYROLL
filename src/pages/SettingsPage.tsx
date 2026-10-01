@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { CustomField, CustomFieldType } from "../types";
 import { emptyData, sampleData } from "../data/seed";
 import { normalizeData } from "../store";
+import { prepareLogo } from "../components/logo";
 import { formatMoney, parseNumber, uid } from "../utils";
 import { addBudgetYear, removeBudgetYear } from "../engine/years";
 import { summarizeYears } from "../engine/calculate";
@@ -19,6 +20,7 @@ const FIELD_TYPES: Record<CustomFieldType, string> = {
 export function SettingsPage({ data, setData }: PageProps) {
   const [editing, setEditing] = useState<CustomField | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const logoRef = useRef<HTMLInputElement>(null);
   const s = data.settings;
   const setSettings = (patch: Partial<typeof s>) => setData((d) => ({ ...d, settings: { ...d.settings, ...patch } }));
 
@@ -73,6 +75,34 @@ export function SettingsPage({ data, setData }: PageProps) {
           <Field label="Moneda (símbolo)">
             <input value={s.currency} onChange={(e) => setSettings({ currency: e.target.value })} />
           </Field>
+        </div>
+        <h3>Logo de la empresa</h3>
+        <p className="muted small">Se muestra en la barra superior y en la pantalla de presupuesto. PNG, JPG, SVG o WebP; se ajusta automáticamente.</p>
+        <div className="logo-editor">
+          <div className="logo-preview">
+            {s.logo ? <img src={s.logo} alt={`Logo de ${s.companyName || "la empresa"}`} /> : <span className="muted small">Sin logo</span>}
+          </div>
+          <div className="actions">
+            <button className="btn primary" onClick={() => logoRef.current?.click()}>{s.logo ? "Cambiar logo" : "Subir logo"}</button>
+            {s.logo && <button className="btn danger" onClick={() => setSettings({ logo: "" })}>Quitar logo</button>}
+            <input
+              ref={logoRef}
+              id="logo-file"
+              type="file"
+              accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+              hidden
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                try {
+                  setSettings({ logo: await prepareLogo(f) });
+                } catch (err) {
+                  notify(err instanceof Error ? err.message : String(err));
+                }
+              }}
+            />
+          </div>
         </div>
       </section>
 

@@ -7,7 +7,7 @@ export function sampleData(): PayrollData {
   const y2 = 2027;
   return {
     version: 1,
-    settings: { companyName: "Mi Empresa S.A.C.", year: y1, years: [y1, y2], currency: "S/" },
+    settings: { companyName: "Mi Empresa S.A.C.", year: y1, years: [y1, y2], currency: "S/", logo: "" },
     customFields: [
       { id: "cf-banco", label: "Banco", type: "select", options: ["BCP", "BBVA", "Interbank", "Scotiabank"] },
       { id: "cf-cuenta", label: "Número de cuenta", type: "text", options: [] },
@@ -203,7 +203,7 @@ export function sampleData(): PayrollData {
 export function emptyData(): PayrollData {
   return {
     version: 1,
-    settings: { companyName: "", year: new Date().getFullYear() + 1, years: [new Date().getFullYear() + 1], currency: "S/" },
+    settings: { companyName: "", year: new Date().getFullYear() + 1, years: [new Date().getFullYear() + 1], currency: "S/", logo: "" },
     customFields: [],
     positions: [],
     employees: [],

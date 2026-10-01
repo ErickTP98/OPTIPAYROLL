@@ -83,10 +83,11 @@ export function CheckList<T>({ items, selected, onChange, getId, getLabel, empty
   );
 }
 
-export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
+export function PageHeader({ title, description, actions, logo }: { title: string; description?: string; actions?: ReactNode; logo?: string }) {
   return (
     <div className="page-header">
-      <div>
+      {logo && <img className="page-logo" src={logo} alt="" />}
+      <div className="page-title">
         <h1>{title}</h1>
         {description && <p className="muted">{description}</p>}
       </div>

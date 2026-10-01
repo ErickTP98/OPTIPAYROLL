@@ -7,7 +7,7 @@ remuneraciones, beneficios sociales y aportes patronales, mes a mes, con increme
 
 | Módulo | Qué permite |
 | --- | --- |
-| **Empresa** | Nombre y moneda. **Años presupuestados** (2026, 2027, …): agregar un año copiando otro con ajuste % opcional, o eliminarlo. **Campos personalizados** del trabajador (texto, número, fecha o lista: banco, cuenta, sistema de pensiones, etc.). Respaldo/importación en JSON. |
+| **Empresa** | Nombre, moneda y **logo de la empresa cliente** (se muestra en la barra superior y en el presupuesto). **Años presupuestados** (2026, 2027, …): agregar un año copiando otro con ajuste % opcional, o eliminarlo. **Campos personalizados** del trabajador (texto, número, fecha o lista: banco, cuenta, sistema de pensiones, etc.). Respaldo/importación en JSON. |
 | **Puestos** | Código, nombre, área, centro de costo, categoría y montos referenciales por concepto (plantilla). |
 | **Trabajadores** | Datos personales (nombres, documento, nacimiento, contacto, ingreso, contrato + campos personalizados), puesto asignado, **meses que labora** y monto mensual de cada concepto **por año** (p. ej. sueldo 18,000 en 2026 y 18,500 en 2027), con la variación respecto del año anterior. También permite registrar **vacantes** para presupuestar puestos por cubrir. |
 | **Conceptos** | Conceptos de nómina con tipo, meses en que se pagan (p. ej. bono solo en marzo), indicador **afecto a incremento** y una matriz de **indicadores de afectación** a cada beneficio social y aporte patronal. |

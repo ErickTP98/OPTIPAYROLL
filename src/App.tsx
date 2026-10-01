@@ -42,7 +42,7 @@ export function App() {
           <span className="logo">OP</span>
           <div>
             <strong>OptiPayroll</strong>
-            <span className="muted small">{data.settings.companyName || "Presupuesto de nóminas"}</span>
+            <span className="muted small">Presupuesto de nóminas</span>
           </div>
         </div>
         <label className="year-switch">
@@ -63,6 +63,17 @@ export function App() {
             </button>
           ))}
         </nav>
+        <div className="client">
+          {data.settings.logo && (
+            <img
+              className="client-logo"
+              src={data.settings.logo}
+              alt={`Logo de ${data.settings.companyName || "la empresa"}`}
+              title={data.settings.companyName}
+            />
+          )}
+          {!data.settings.logo && data.settings.companyName && <span className="client-name">{data.settings.companyName}</span>}
+        </div>
       </header>
       <main className="content">
         <current.Component data={data} setData={setData} />

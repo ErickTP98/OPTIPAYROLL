@@ -24,6 +24,7 @@ export function normalizeData(raw: unknown): PayrollData {
       year,
       years,
       currency: d.settings.currency ?? "",
+      logo: typeof d.settings.logo === "string" && d.settings.logo.startsWith("data:image/") ? d.settings.logo : "",
     },
     customFields: (d.customFields ?? []).map((f) => ({ ...f, options: f.options ?? [] })),
     positions: (d.positions ?? []).map((p) => ({ ...p, concepts: p.concepts ?? [] })),

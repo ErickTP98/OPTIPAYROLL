@@ -8,6 +8,8 @@ export interface Settings {
   /** Años presupuestados (p. ej. 2026, 2027, 2028). */
   years: number[];
   currency: string;
+  /** Logo de la empresa cliente como data URL (vacío = sin logo). */
+  logo: string;
 }
 
 export type CustomFieldType = "text" | "number" | "date" | "select";

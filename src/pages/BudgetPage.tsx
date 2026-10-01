@@ -169,6 +169,7 @@ export function BudgetPage({ data }: PageProps) {
       <PageHeader
         title={`Presupuesto de nóminas ${data.settings.year}`}
         description={data.settings.companyName}
+        logo={data.settings.logo || undefined}
         actions={
           <>
             <button className="btn" onClick={exportCsv}>Exportar vista (CSV)</button>
