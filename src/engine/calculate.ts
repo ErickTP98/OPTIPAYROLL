@@ -3,7 +3,7 @@ import { compileFormula, FormulaError, type CompiledFormula } from "./formula";
 
 export const MONTHS = 12;
 
-export type LineGroup = "concepto" | "beneficio" | "aporte";
+export type LineGroup = "concepto" | "bono" | "beneficio" | "aporte";
 
 export interface BudgetLine {
   id: string;
@@ -41,6 +41,17 @@ export const RESERVED_VARIABLES: Record<string, string> = {
   MESES_PERIODO: "Meses laborados dentro del periodo que cubre la base",
   MESES_LABORADOS: "Meses laborados en todo el año",
 };
+
+/** Variables disponibles en las fórmulas de los bonos target. */
+export const TARGET_BONUS_VARIABLES: Record<string, string> = {
+  SUELDO_BASICO: "Sueldo básico del mes (con incrementos; 0 si no labora)",
+  TARGET: "Valor target asignado al trabajador o puesto para este bono",
+  MES: "Número de mes (1 = enero … 12 = diciembre)",
+  LABORA: "1 si el trabajador labora en el mes, 0 si no",
+  MESES_LABORADOS: "Meses laborados en todo el año",
+};
+
+export const isTargetBonus = (c: Concept) => c.segment === "bono_target";
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const zeros = () => new Array<number>(MONTHS).fill(0);
@@ -86,6 +97,29 @@ interface PreparedRule {
  * Ordena las reglas según sus dependencias (reglas incluidas en la base y reglas
  * referenciadas en la fórmula) y compila las fórmulas.
  */
+/** Compila las fórmulas de los bonos target y valida sus variables. */
+export function prepareTargetBonuses(data: PayrollData, errors: string[]): Map<string, CompiledFormula> {
+  const compiled = new Map<string, CompiledFormula>();
+  const regularCodes = new Set(data.concepts.filter((c) => !isTargetBonus(c)).map((c) => norm(c.code)));
+  for (const c of data.concepts.filter(isTargetBonus)) {
+    try {
+      const f = compileFormula(c.formula);
+      const unknown = f.variables.filter((v) => !(v in TARGET_BONUS_VARIABLES) && !regularCodes.has(v));
+      if (unknown.length) {
+        errors.push(`La fórmula del bono ${c.code} usa variables desconocidas: ${unknown.join(", ")}`);
+        continue;
+      }
+      compiled.set(c.id, f);
+    } catch (err) {
+      errors.push(`Fórmula inválida en el bono ${c.code}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  if (!data.concepts.some((c) => c.isBaseSalary) && compiled.size > 0) {
+    errors.push("Ningún concepto está marcado como sueldo básico: SUELDO_BASICO valdrá 0 en los bonos target.");
+  }
+  return compiled;
+}
+
 export function prepareRules(data: PayrollData): { ordered: PreparedRule[]; errors: string[] } {
   const errors: string[] = [];
   const byCode = new Map(data.rules.map((r) => [norm(r.code), r]));
@@ -142,18 +176,54 @@ export function calculateEmployee(
   e: Employee,
   ordered: PreparedRule[],
   errors: string[],
+  bonusFormulas: Map<string, CompiledFormula> = new Map(),
 ): EmployeeBudget {
   const position = data.positions.find((p) => p.id === e.positionId);
   const works = Array.from({ length: MONTHS }, (_, m) => !!e.months[m]);
   const monthsWorked = works.filter(Boolean).length;
 
   const conceptLines = new Map<string, BudgetLine>();
+  const assigned = (c: Concept) => e.concepts.filter((a) => a.conceptId === c.id).reduce((s, a) => s + (a.amount || 0), 0);
   for (const c of data.concepts) {
-    const amount = e.concepts.filter((a) => a.conceptId === c.id).reduce((s, a) => s + (a.amount || 0), 0);
+    if (isTargetBonus(c)) continue;
+    const amount = assigned(c);
     if (!amount) continue;
     const factors = increaseFactors(data.increases, e, position, c);
     const months = works.map((w, m) => (w && c.months[m] ? round2(amount * factors[m]) : 0));
     conceptLines.set(c.id, { id: c.id, code: c.code, name: c.name, group: "concepto", months, total: round2(sum(months)) });
+  }
+
+  // Bonos target: fórmula sobre el sueldo básico del mes (ya incrementado) y el TARGET del trabajador.
+  const regularVars: Record<string, number[]> = {};
+  for (const c of data.concepts) if (!isTargetBonus(c)) regularVars[norm(c.code)] = conceptLines.get(c.id)?.months ?? zeros();
+  const baseSalary = zeros();
+  for (const c of data.concepts.filter((x) => x.isBaseSalary && !isTargetBonus(x))) {
+    conceptLines.get(c.id)?.months.forEach((v, m) => (baseSalary[m] += v));
+  }
+  for (const c of data.concepts.filter(isTargetBonus)) {
+    const target = assigned(c);
+    const formula = bonusFormulas.get(c.id);
+    if (!target || !formula) continue;
+    const months = works.map((w, m) => {
+      if (!w || !c.months[m]) return 0;
+      const vars: Record<string, number> = {
+        SUELDO_BASICO: baseSalary[m],
+        TARGET: target,
+        MES: m + 1,
+        LABORA: 1,
+        MESES_LABORADOS: monthsWorked,
+      };
+      for (const [code, vals] of Object.entries(regularVars)) vars[code] ??= vals[m];
+      try {
+        const v = formula.evaluate(vars);
+        return Number.isFinite(v) ? round2(v) : 0;
+      } catch (err) {
+        const msg = `Error al evaluar el bono ${c.code}: ${err instanceof Error ? err.message : String(err)}`;
+        if (!errors.includes(msg)) errors.push(msg);
+        return 0;
+      }
+    });
+    conceptLines.set(c.id, { id: c.id, code: c.code, name: c.name, group: "bono", months, total: round2(sum(months)) });
   }
 
   const conceptVars: Record<string, number[]> = {};
@@ -234,10 +304,11 @@ export function calculateEmployee(
   }
 
   const lines = [
-    ...data.concepts.map((c) => conceptLines.get(c.id)).filter((l): l is BudgetLine => !!l),
+    ...data.concepts.filter((c) => !isTargetBonus(c)).map((c) => conceptLines.get(c.id)).filter((l): l is BudgetLine => !!l),
+    ...data.concepts.filter(isTargetBonus).map((c) => conceptLines.get(c.id)).filter((l): l is BudgetLine => !!l && l.total !== 0),
     ...data.rules.map((r) => ruleLines.get(r.id)!).filter((l) => l.total !== 0),
   ];
-  const totals: EmployeeBudget["totals"] = { concepto: zeros(), beneficio: zeros(), aporte: zeros(), total: zeros() };
+  const totals: EmployeeBudget["totals"] = { concepto: zeros(), bono: zeros(), beneficio: zeros(), aporte: zeros(), total: zeros() };
   for (const l of lines) {
     l.months.forEach((v, m) => {
       totals[l.group][m] += v;
@@ -251,7 +322,8 @@ export function calculateEmployee(
 
 export function calculateBudget(data: PayrollData): BudgetResult {
   const { ordered, errors } = prepareRules(data);
-  const employees = data.employees.map((e) => calculateEmployee(data, e, ordered, errors));
+  const bonusFormulas = prepareTargetBonuses(data, errors);
+  const employees = data.employees.map((e) => calculateEmployee(data, e, ordered, errors, bonusFormulas));
   return { employees, errors };
 }
 
@@ -273,7 +345,7 @@ export function groupBudgets(
     const { key, label } = keyOf(b);
     let g = groups.get(key);
     if (!g) {
-      g = { key, label, headcount: 0, totals: { concepto: zeros(), beneficio: zeros(), aporte: zeros(), total: zeros() }, grandTotal: 0 };
+      g = { key, label, headcount: 0, totals: { concepto: zeros(), bono: zeros(), beneficio: zeros(), aporte: zeros(), total: zeros() }, grandTotal: 0 };
       groups.set(key, g);
     }
     g.headcount++;
@@ -299,6 +371,6 @@ export function linesSummary(items: EmployeeBudget[]): BudgetLine[] {
       acc.total = round2(acc.total + l.total);
     }
   }
-  const order: Record<LineGroup, number> = { concepto: 0, beneficio: 1, aporte: 2 };
+  const order: Record<LineGroup, number> = { concepto: 0, bono: 1, beneficio: 2, aporte: 3 };
   return [...map.values()].sort((a, b) => order[a.group] - order[b.group]);
 }

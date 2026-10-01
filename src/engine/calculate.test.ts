@@ -12,7 +12,10 @@ function employee(over: Partial<Employee> = {}): Employee {
   };
 }
 function concept(over: Partial<Concept> & { id: string; code: string }): Concept {
-  return { name: over.code, type: "remunerativo", months: allMonths(), appliesIncrease: true, affects: [], ...over };
+  return {
+    name: over.code, type: "remunerativo", segment: "regular", targetType: "STI", formula: "", isBaseSalary: false,
+    months: allMonths(), appliesIncrease: true, affects: [], ...over,
+  };
 }
 function rule(over: Partial<Rule> & { id: string; code: string }): Rule {
   return {
@@ -155,6 +158,44 @@ describe("calculateBudget", () => {
     expect(res.employees[0].grandTotal).toBe(1200 + 120);
   });
 
+  it("calcula bonos target STI y LTI con fórmula sobre el sueldo básico del mes", () => {
+    const d = data({
+      concepts: [
+        concept({ id: "s", code: "SUELDO", isBaseSalary: true, affects: ["ess"] }),
+        concept({ id: "sti", code: "BONO_STI", segment: "bono_target", targetType: "STI", formula: "SUELDO_BASICO * TARGET / 12", affects: ["ess"] }),
+        concept({ id: "lti", code: "BONO_LTI", segment: "bono_target", targetType: "LTI", formula: "SUELDO_BASICO * TARGET / 100", months: onlyMonths(11) }),
+      ],
+      rules: [rule({ id: "ess", code: "ESSALUD", rate: 10 })],
+      increases: [{ id: "i", name: "Inc", month: 6, percent: 10, scope: "todos", targets: [], conceptIds: [] }],
+      employees: [
+        employee({ months: onlyMonths(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), concepts: [
+          { conceptId: "s", amount: 1200 }, { conceptId: "sti", amount: 2 }, { conceptId: "lti", amount: 50 },
+        ] }),
+        employee({ id: "e2", concepts: [{ conceptId: "s", amount: 1200 }] }),
+      ],
+    });
+    const res = calculateBudget(d);
+    expect(res.errors).toEqual([]);
+    const b = res.employees[0];
+    const sti = b.lines.find((l) => l.id === "sti")!;
+    expect(sti.group).toBe("bono");
+    expect(sti.months[0]).toBe(200); // 1200 × 2 / 12
+    expect(sti.months[6]).toBe(220); // sigue el sueldo incrementado, sin incremento propio
+    expect(b.lines.find((l) => l.id === "lti")!.months.filter(Boolean)).toEqual([660]); // 1320 × 50%
+    expect(b.lines.find((l) => l.id === "ess")!.months[0]).toBe(140); // (1200 + 200) × 10%
+    expect(b.totals.bono[0]).toBe(200);
+    // Sin TARGET asignado no hay bono.
+    expect(res.employees[1].lines.some((l) => l.group === "bono")).toBe(false);
+  });
+
+  it("informa fórmulas de bonos con variables desconocidas", () => {
+    const d = data({
+      concepts: [concept({ id: "b", code: "BONO", segment: "bono_target", formula: "SUELDO_BASICO * X" })],
+      employees: [employee({ concepts: [{ conceptId: "b", amount: 1 }] })],
+    });
+    expect(calculateBudget(d).errors.some((e) => e.includes("X"))).toBe(true);
+  });
+
   it("calcula el ejemplo incluido y agrupa por puesto", () => {
     const d = sampleData();
     const res = calculateBudget(d);
@@ -162,8 +203,8 @@ describe("calculateBudget", () => {
     const gg = res.employees.find((e) => e.employee.id === "emp-1")!;
     // Sueldo 12000 hasta marzo y 12600 desde abril (+5%).
     expect(gg.lines.find((l) => l.id === "c-sueldo")!.months[3]).toBe(12600);
-    // EsSalud de marzo incluye el bono anual: (12000 + 113 + 6000) × 9%.
-    expect(gg.lines.find((l) => l.id === "r-essalud")!.months[2]).toBe(1630.17);
+    // EsSalud de marzo incluye el bono anual y el STI: (12000 + 113 + 6000 + 12000 × 3 / 12) × 9%.
+    expect(gg.lines.find((l) => l.id === "r-essalud")!.months[2]).toBe(1900.17);
     const byPos = groupBudgets(res.employees, (b) => ({ key: b.employee.positionId, label: b.position?.name ?? "" }));
     expect(byPos.find((g) => g.key === "pos-op")!.headcount).toBe(2);
     const total = res.employees.reduce((s, e) => s + e.grandTotal, 0);

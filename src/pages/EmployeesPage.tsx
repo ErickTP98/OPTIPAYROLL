@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { CustomField, Employee } from "../types";
 import { allMonths, formatMoney, monthsLabel, uid } from "../utils";
-import { ConceptAmounts } from "../components/ConceptAmounts";
+import { ConceptAmounts, fixedMonthlyAmount } from "../components/ConceptAmounts";
 import { EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
 import { ask, confirmDelete } from "../components/dialogs";
 import type { PageProps } from "./types";
@@ -96,7 +96,7 @@ export function EmployeesPage({ data, setData }: PageProps) {
                     <td>{pos?.name ?? <span className="badge danger">sin puesto</span>}</td>
                     <td>{pos?.area}</td>
                     <td className="muted small">{monthsLabel(e.months)}</td>
-                    <td className="num">{formatMoney(e.concepts.reduce((s, c) => s + c.amount, 0), cur)}</td>
+                    <td className="num">{formatMoney(fixedMonthlyAmount(data.concepts, e.concepts), cur)}</td>
                     <td className="row-actions">
                       <button className="btn-link" onClick={() => setEditing(e)}>Editar</button>
                       <button className="btn-link" onClick={() => duplicate(e)}>Duplicar</button>

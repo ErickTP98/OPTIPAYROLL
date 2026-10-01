@@ -17,7 +17,7 @@ export function sampleData(): PayrollData {
       {
         id: "pos-gg", code: "GG01", name: "Gerente General", area: "Gerencia", costCenter: "CC-100",
         category: "Ejecutivo", notes: "",
-        concepts: [{ conceptId: "c-sueldo", amount: 12000 }],
+        concepts: [{ conceptId: "c-sueldo", amount: 12000 }, { conceptId: "c-sti", amount: 3 }, { conceptId: "c-lti", amount: 20 }],
       },
       {
         id: "pos-an", code: "AN01", name: "Analista Contable", area: "Finanzas", costCenter: "CC-200",
@@ -41,6 +41,8 @@ export function sampleData(): PayrollData {
           { conceptId: "c-sueldo", amount: 12000 },
           { conceptId: "c-asig-fam", amount: 113 },
           { conceptId: "c-bono-anual", amount: 6000 },
+          { conceptId: "c-sti", amount: 3 },
+          { conceptId: "c-lti", amount: 20 },
         ],
       },
       {
@@ -52,6 +54,7 @@ export function sampleData(): PayrollData {
         concepts: [
           { conceptId: "c-sueldo", amount: 3500 },
           { conceptId: "c-movilidad", amount: 200 },
+          { conceptId: "c-sti", amount: 1 },
         ],
       },
       {
@@ -81,24 +84,34 @@ export function sampleData(): PayrollData {
     ],
     concepts: [
       {
-        id: "c-sueldo", code: "SUELDO", name: "Sueldo básico", type: "remunerativo", months: allMonths(),
+        id: "c-sueldo", code: "SUELDO", name: "Sueldo básico", type: "remunerativo", segment: "regular", targetType: "STI", formula: "", isBaseSalary: true, months: allMonths(),
         appliesIncrease: true, affects: ["r-grati", "r-cts", "r-vac", "r-essalud", "r-vida"],
       },
       {
-        id: "c-asig-fam", code: "ASIG_FAM", name: "Asignación familiar", type: "remunerativo", months: allMonths(),
+        id: "c-asig-fam", code: "ASIG_FAM", name: "Asignación familiar", type: "remunerativo", segment: "regular", targetType: "STI", formula: "", isBaseSalary: false, months: allMonths(),
         appliesIncrease: false, affects: ["r-grati", "r-cts", "r-vac", "r-essalud", "r-vida"],
       },
       {
-        id: "c-bono-prod", code: "BONO_PROD", name: "Bono de productividad", type: "remunerativo", months: allMonths(),
+        id: "c-bono-prod", code: "BONO_PROD", name: "Bono de productividad", type: "remunerativo", segment: "regular", targetType: "STI", formula: "", isBaseSalary: false, months: allMonths(),
         appliesIncrease: true, affects: ["r-essalud"],
       },
       {
-        id: "c-bono-anual", code: "BONO_ANUAL", name: "Bono anual por desempeño", type: "remunerativo",
+        id: "c-bono-anual", code: "BONO_ANUAL", name: "Bono anual por desempeño", type: "remunerativo", segment: "regular", targetType: "STI", formula: "", isBaseSalary: false,
         months: onlyMonths(2), appliesIncrease: false, affects: ["r-essalud"],
       },
       {
-        id: "c-movilidad", code: "MOVILIDAD", name: "Movilidad (condición de trabajo)", type: "no_remunerativo",
+        id: "c-movilidad", code: "MOVILIDAD", name: "Movilidad (condición de trabajo)", type: "no_remunerativo", segment: "regular", targetType: "STI", formula: "", isBaseSalary: false,
         months: allMonths(), appliesIncrease: false, affects: [],
+      },
+      {
+        id: "c-sti", code: "BONO_STI", name: "Bono STI (incentivo anual)", type: "remunerativo", segment: "bono_target",
+        targetType: "STI", formula: "SUELDO_BASICO * TARGET / 12", isBaseSalary: false, months: allMonths(),
+        appliesIncrease: false, affects: ["r-essalud"],
+      },
+      {
+        id: "c-lti", code: "BONO_LTI", name: "Bono LTI (incentivo de largo plazo)", type: "remunerativo", segment: "bono_target",
+        targetType: "LTI", formula: "SUELDO_BASICO * TARGET / 100", isBaseSalary: false, months: allMonths(),
+        appliesIncrease: false, affects: [],
       },
     ],
     rules: [

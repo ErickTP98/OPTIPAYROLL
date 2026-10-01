@@ -11,6 +11,7 @@ remuneraciones, beneficios sociales y aportes patronales, mes a mes, con increme
 | **Puestos** | Código, nombre, área, centro de costo, categoría y montos referenciales por concepto (plantilla). |
 | **Trabajadores** | Datos personales (nombres, documento, nacimiento, contacto, ingreso, contrato + campos personalizados), puesto asignado, **meses que labora** en el año y monto mensual de cada concepto. También permite registrar **vacantes** para presupuestar puestos por cubrir. |
 | **Conceptos** | Conceptos de nómina con tipo, meses en que se pagan (p. ej. bono solo en marzo), indicador **afecto a incremento** y una matriz de **indicadores de afectación** a cada beneficio social y aporte patronal. |
+| **Bonos target** | Segmento propio dentro de Conceptos, dividido en **Bono STI** (corto plazo) y **Bono LTI** (largo plazo). Cada bono tiene una fórmula sobre el **sueldo básico del mes** y un valor `TARGET` por trabajador o puesto. |
 | **Beneficios y aportes** | Reglas de cálculo: porcentaje de la base o **fórmula personalizada**, base mínima y tope, meses de registro, modo de base (mensual, acumulada o promedio) y posibilidad de sumar a la base el resultado de otras reglas. |
 | **Incrementos** | Aumentos porcentuales desde un mes, para todos, por área, por puesto o por trabajador, y sobre todos los conceptos afectos o sobre conceptos específicos. Se acumulan de forma compuesta. |
 | **Presupuesto** | Totales anuales, resumen mensual, vistas por concepto, trabajador, puesto, área y centro de costo, detalle de cálculo por trabajador (incluidas las bases de cada regla) y exportación a CSV (Excel). |
@@ -29,6 +30,19 @@ Para cada trabajador y cada mes del año:
 3. **Resultado de la regla**: `base × %` o la fórmula definida. Las reglas se calculan en orden de dependencias; las dependencias
    circulares y las fórmulas inválidas se informan en la pantalla de presupuesto.
 4. **Gasto del trabajador / puesto** = conceptos + beneficios sociales + aportes patronales.
+
+### Bonos target (STI / LTI)
+
+Un concepto regular se marca como **sueldo básico**. Cada bono target calcula su monto mensual con una fórmula que puede usar
+`SUELDO_BASICO` (sueldo básico del mes, ya con incrementos), `TARGET` (valor asignado al trabajador o al puesto), `MES`,
+`LABORA`, `MESES_LABORADOS` y los códigos de los conceptos regulares. Ejemplos:
+
+- `SUELDO_BASICO * TARGET / 12`: provisión mensual de un bono de TARGET sueldos al año (STI).
+- `SUELDO_BASICO * TARGET / 100`: TARGET % del sueldo cada mes (LTI).
+- `IF(MES = 3, SUELDO_BASICO * TARGET, 0)`: TARGET sueldos pagados solo en marzo.
+
+El bono solo se calcula para quienes tienen un TARGET asignado, en los meses que laboran, y puede marcarse como afecto a
+beneficios sociales y aportes patronales igual que cualquier concepto. En el presupuesto aparece como grupo propio.
 
 ### Fórmulas
 

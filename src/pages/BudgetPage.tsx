@@ -22,6 +22,7 @@ const VIEWS: Record<View, string> = {
 
 const GROUP_LABEL: Record<LineGroup, string> = {
   concepto: "Remuneraciones y conceptos",
+  bono: "Bonos target",
   beneficio: "Beneficios sociales",
   aporte: "Aportes patronales",
 };
@@ -63,7 +64,7 @@ export function BudgetPage({ data }: PageProps) {
   let rows: Row[] = [];
   switch (view) {
     case "mensual": {
-      rows = (["concepto", "beneficio", "aporte"] as LineGroup[]).map((g) => ({
+      rows = (["concepto", "bono", "beneficio", "aporte"] as LineGroup[]).map((g) => ({
         key: g,
         label: GROUP_LABEL[g],
         csvLabel: [GROUP_LABEL[g]],
@@ -159,7 +160,7 @@ export function BudgetPage({ data }: PageProps) {
 
       {result.errors.length > 0 && (
         <div className="alert">
-          <strong>Revisa la configuración de reglas:</strong>
+          <strong>Revisa la configuración de reglas y bonos:</strong>
           <ul>{result.errors.map((e) => <li key={e}>{e}</li>)}</ul>
         </div>
       )}
@@ -167,6 +168,7 @@ export function BudgetPage({ data }: PageProps) {
       <div className="kpis">
         <Kpi label="Gasto total anual" value={formatMoney(totals?.grandTotal ?? 0, cur)} accent />
         <Kpi label={GROUP_LABEL.concepto} value={formatMoney(sumOf(totals?.totals.concepto), cur)} />
+        <Kpi label={GROUP_LABEL.bono} value={formatMoney(sumOf(totals?.totals.bono), cur)} />
         <Kpi label={GROUP_LABEL.beneficio} value={formatMoney(sumOf(totals?.totals.beneficio), cur)} />
         <Kpi label={GROUP_LABEL.aporte} value={formatMoney(sumOf(totals?.totals.aporte), cur)} />
         <Kpi label="Dotación" value={`${headcount}`} sub={vacancies ? `+ ${vacancies} vacante(s)` : undefined} />
@@ -261,7 +263,7 @@ function EmployeeDetail({ budget, currency, data, onClose }: {
     className: "subtotal-row",
   });
   const rows: Row[] = [];
-  for (const g of ["concepto", "beneficio", "aporte"] as LineGroup[]) {
+  for (const g of ["concepto", "bono", "beneficio", "aporte"] as LineGroup[]) {
     const ls = budget.lines.filter((l) => l.group === g);
     if (!ls.length) continue;
     rows.push({ key: `h-${g}`, label: GROUP_LABEL[g], csvLabel: [], months: new Array(12).fill(0), total: 0, className: "group-row" });

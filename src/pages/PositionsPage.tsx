@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Position } from "../types";
 import { formatMoney, uid } from "../utils";
-import { ConceptAmounts } from "../components/ConceptAmounts";
+import { ConceptAmounts, fixedMonthlyAmount } from "../components/ConceptAmounts";
 import { EmptyState, Field, Modal, PageHeader } from "../components/ui";
 import { confirmDelete, notify } from "../components/dialogs";
 import type { PageProps } from "./types";
@@ -63,7 +63,7 @@ export function PositionsPage({ data, setData }: PageProps) {
                       {people.filter((e) => !e.isVacancy).length}
                       {people.some((e) => e.isVacancy) && <span className="badge warn">+{people.filter((e) => e.isVacancy).length} vac.</span>}
                     </td>
-                    <td className="num">{formatMoney(p.concepts.reduce((s, c) => s + c.amount, 0), cur)}</td>
+                    <td className="num">{formatMoney(fixedMonthlyAmount(data.concepts, p.concepts), cur)}</td>
                     <td className="row-actions">
                       <button className="btn-link" onClick={() => setEditing(p)}>Editar</button>
                       <button className="btn-link danger" onClick={() => remove(p)}>Eliminar</button>

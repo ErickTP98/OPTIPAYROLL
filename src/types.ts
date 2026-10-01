@@ -19,6 +19,7 @@ export interface CustomField {
 
 export interface ConceptAmount {
   conceptId: string;
+  /** Monto mensual (conceptos regulares) o valor TARGET (bonos target). */
   amount: number;
 }
 
@@ -60,11 +61,26 @@ export interface Employee {
 
 export type ConceptType = "remunerativo" | "no_remunerativo" | "otro";
 
+/** Segmento del concepto: regular (monto fijo) o bono target (calculado con fórmula). */
+export type ConceptSegment = "regular" | "bono_target";
+/** Tipo de bono target: incentivo de corto plazo (STI) o de largo plazo (LTI). */
+export type TargetBonusType = "STI" | "LTI";
+
 export interface Concept {
   id: string;
   code: string;
   name: string;
   type: ConceptType;
+  segment: ConceptSegment;
+  /** Solo bonos target. */
+  targetType: TargetBonusType;
+  /**
+   * Solo bonos target: fórmula del monto mensual. Puede usar SUELDO_BASICO (sueldo básico del mes),
+   * TARGET (valor asignado al trabajador) y los códigos de los conceptos regulares.
+   */
+  formula: string;
+  /** Concepto que representa el sueldo básico (variable SUELDO_BASICO en las fórmulas). */
+  isBaseSalary: boolean;
   /** Meses en los que se paga el concepto (p. ej. un bono anual solo en marzo). */
   months: MonthFlags;
   /** Si los incrementos porcentuales afectan a este concepto. */

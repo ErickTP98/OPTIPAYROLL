@@ -15,6 +15,8 @@
   --on-primary: #ffffff;
   --benefit-fg: #2e7d32;
   --aporte-fg: #6a3fb5;
+  --bono: #fff1e6;
+  --bono-fg: #a24a00;
   --radius: 8px;
   --shadow: 0 1px 2px rgb(16 24 40 / 6%);
   color-scheme: light;
@@ -45,6 +47,8 @@
     --on-primary: #0f1626;
     --benefit-fg: #8fd19e;
     --aporte-fg: #c3a8f0;
+    --bono: #35251a;
+    --bono-fg: #f5b27a;
     color-scheme: dark;
   }
 }
@@ -69,6 +73,8 @@
     --on-primary: #0f1626;
     --benefit-fg: #8fd19e;
     --aporte-fg: #c3a8f0;
+    --bono: #35251a;
+    --bono-fg: #f5b27a;
     color-scheme: dark;
 }
 
@@ -230,3 +236,7 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); cursor: poin
 
 .export-box { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.8rem; white-space: pre; overflow: auto; }
 .badge.danger { background: var(--warn-bg); }
+.tag-bono { background: var(--bono); color: var(--bono-fg); }
+.badge.info { background: var(--primary-soft); color: var(--primary); }
+.bonus-group { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.bonus-group h4 { margin: 0 0 2px; font-size: 0.95rem; }
