@@ -1,3 +1,5 @@
+import type { Employee, EmployeeYear } from "./types";
+
 export const MONTH_NAMES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -45,4 +47,13 @@ export function toCsv(rows: (string | number)[][]): string {
     return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return "﻿" + rows.map((r) => r.map(esc).join(";")).join("\r\n");
+}
+
+/** Datos del trabajador para un año; si no tiene datos ese año, no labora ningún mes. */
+export function employeeYear(e: Employee, year: number): EmployeeYear {
+  return e.years[String(year)] ?? { months: new Array<boolean>(12).fill(false), concepts: [] };
+}
+
+export function withEmployeeYear(e: Employee, year: number, patch: Partial<EmployeeYear>): Employee {
+  return { ...e, years: { ...e.years, [String(year)]: { ...employeeYear(e, year), ...patch } } };
 }

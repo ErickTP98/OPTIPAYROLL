@@ -13,8 +13,8 @@ const SCOPES: Record<IncreaseScope, string> = {
   trabajador: "Por trabajador",
 };
 
-const newIncrease = (): Increase => ({
-  id: uid(), name: "", month: 0, percent: 0, scope: "todos", targets: [], conceptIds: [],
+const newIncrease = (year: number): Increase => ({
+  id: uid(), year, name: "", month: 0, percent: 0, scope: "todos", targets: [], conceptIds: [],
 });
 
 export function IncreasesPage({ data, setData }: PageProps) {
@@ -48,17 +48,22 @@ export function IncreasesPage({ data, setData }: PageProps) {
       ? i.conceptIds.map((id) => data.concepts.find((c) => c.id === id)?.code ?? "?").join(", ")
       : "Conceptos afectos a incremento";
 
-  const sorted = [...data.increases].sort((a, b) => a.month - b.month);
+  const year = data.settings.year;
+  const sorted = data.increases.filter((i) => i.year === year).sort((a, b) => a.month - b.month);
+  const otherYears = [...new Set(data.increases.filter((i) => i.year !== year).map((i) => i.year))].sort();
 
   return (
     <>
       <PageHeader
-        title="Incrementos"
-        description="Aumentos porcentuales a partir de un mes. Se acumulan (compuestos) y recalculan automáticamente beneficios y aportes."
-        actions={<button className="btn primary" onClick={() => setEditing(newIncrease())}>+ Nuevo incremento</button>}
+        title={`Incrementos ${year}`}
+        description="Aumentos porcentuales a partir de un mes del año seleccionado. Se acumulan (compuestos) y recalculan automáticamente bonos, beneficios y aportes."
+        actions={<button className="btn primary" onClick={() => setEditing(newIncrease(year))}>+ Nuevo incremento</button>}
       />
       {sorted.length === 0 ? (
-        <EmptyState>No hay incrementos programados.</EmptyState>
+        <EmptyState>
+          No hay incrementos programados para {year}.
+          {otherYears.length > 0 && <> Hay incrementos en {otherYears.join(", ")}: cambia el año arriba para verlos.</>}
+        </EmptyState>
       ) : (
         <div className="card table-wrap">
           <table className="table">
@@ -115,6 +120,11 @@ function IncreaseModal({ increase, data, onSave, onClose }: {
     >
       <div className="grid">
         <Field label="Descripción"><input autoFocus value={i.name} onChange={(e) => set({ name: e.target.value })} /></Field>
+        <Field label="Año">
+          <select value={i.year} onChange={(e) => set({ year: Number(e.target.value) })}>
+            {[...data.settings.years].sort().map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </Field>
         <Field label="Rige desde">
           <select value={i.month} onChange={(e) => set({ month: Number(e.target.value) })}>
             {MONTH_NAMES.map((m, idx) => <option key={m} value={idx}>{m}</option>)}

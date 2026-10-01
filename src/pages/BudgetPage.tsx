@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
-  calculateBudget, groupBudgets, linesSummary,
+  calculateBudget, groupBudgets, linesSummary, summarizeYears, type YearSummary,
   type BudgetLine, type EmployeeBudget, type GroupSummary, type LineGroup,
 } from "../engine/calculate";
 import { formatMoney, MONTH_NAMES, MONTH_SHORT, toCsv } from "../utils";
@@ -9,7 +9,7 @@ import { exportFile } from "../components/dialogs";
 import { employeeName } from "./EmployeesPage";
 import type { PageProps } from "./types";
 
-type View = "mensual" | "concepto" | "trabajador" | "puesto" | "area" | "centro";
+type View = "mensual" | "concepto" | "trabajador" | "puesto" | "area" | "centro" | "anual";
 
 const VIEWS: Record<View, string> = {
   mensual: "Resumen mensual",
@@ -18,6 +18,7 @@ const VIEWS: Record<View, string> = {
   puesto: "Por puesto",
   area: "Por área",
   centro: "Por centro de costo",
+  anual: "Comparativo por año",
 };
 
 const GROUP_LABEL: Record<LineGroup, string> = {
@@ -123,7 +124,25 @@ export function BudgetPage({ data }: PageProps) {
   }
   const totalRow: Row = { key: "total", label: "Total", csvLabel: ["Total"], months: sumMonths(rows), total: rows.reduce((s, r) => s + r.total, 0), className: "total-row" };
 
+  const yearSummary = useMemo(
+    () => (view === "anual" ? summarizeYears(data, area ? (b) => b.position?.area === area : undefined) : []),
+    [view, data, area],
+  );
+  const YEAR_GROUPS: LineGroup[] = ["concepto", "bono", "beneficio", "aporte"];
+
   const exportCsv = () => {
+    if (view === "anual") {
+      const csv = toCsv([
+        ["Año", "Trabajadores", "Vacantes", ...YEAR_GROUPS.map((g) => GROUP_LABEL[g]), "Gasto total", "Variación %"],
+        ...yearSummary.map((y, i) => {
+          const prev = yearSummary[i - 1]?.totals.total;
+          return [String(y.year), String(y.headcount), String(y.vacancies), ...YEAR_GROUPS.map((g) => y.totals[g]), y.totals.total,
+            prev ? ((y.totals.total / prev - 1) * 100) : ""];
+        }),
+      ]);
+      exportFile(`presupuesto-comparativo-anual.csv`, csv, "text/csv;charset=utf-8");
+      return;
+    }
     const pad = headers.length;
     const csv = toCsv([
       [...headers, ...MONTH_NAMES, "Total"],
@@ -186,8 +205,13 @@ export function BudgetPage({ data }: PageProps) {
         </select>
       </div>
 
-      {items.length === 0 ? (
-        <EmptyState>No hay trabajadores para presupuestar. Regístralos en la pestaña «Trabajadores».</EmptyState>
+      {view === "anual" ? (
+        <div className="card table-wrap">
+          <YearCompareTable summary={yearSummary} currency={cur} selected={data.settings.year} />
+          <p className="muted small">Gasto anual de cada año presupuestado{area ? ` (área ${area})` : ""}. Cambia de año con el selector de la parte superior.</p>
+        </div>
+      ) : items.length === 0 ? (
+        <EmptyState>No hay trabajadores que laboren en {data.settings.year}. Regístralos o asígnales meses en la pestaña «Trabajadores».</EmptyState>
       ) : (
         <div className="card table-wrap">
           <MatrixTable rows={[...rows, totalRow]} />
@@ -197,6 +221,42 @@ export function BudgetPage({ data }: PageProps) {
 
       {detail && <EmployeeDetail budget={detail} currency={cur} data={data} onClose={() => setDetail(null)} />}
     </>
+  );
+}
+
+function YearCompareTable({ summary, currency, selected }: { summary: YearSummary[]; currency: string; selected: number }) {
+  const groups: LineGroup[] = ["concepto", "bono", "beneficio", "aporte"];
+  return (
+    <table className="table matrix-num">
+      <thead>
+        <tr>
+          <th>Año</th>
+          <th className="num">Dotación</th>
+          {groups.map((g) => <th key={g} className="num">{GROUP_LABEL[g]}</th>)}
+          <th className="num">Gasto total ({currency})</th>
+          <th className="num">Var. vs año anterior</th>
+        </tr>
+      </thead>
+      <tbody>
+        {summary.map((y, i) => {
+          const prev = summary[i - 1]?.totals.total;
+          const delta = prev ? (y.totals.total / prev - 1) * 100 : null;
+          return (
+            <tr key={y.year} className={y.year === selected ? "selected-row" : ""}>
+              <td><strong>{y.year}</strong></td>
+              <td className="num">{y.headcount}{y.vacancies > 0 && <span className="muted small"> + {y.vacancies} vac.</span>}</td>
+              {groups.map((g) => <td key={g} className="num">{formatMoney(y.totals[g])}</td>)}
+              <td className="num strong">{formatMoney(y.totals.total)}</td>
+              <td className="num">
+                {delta === null ? <span className="muted">—</span> : (
+                  <span className={`delta inline ${delta >= 0 ? "up" : "down"}`}>{delta >= 0 ? "+" : ""}{delta.toFixed(1)}%</span>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 

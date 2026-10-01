@@ -60,7 +60,12 @@ export function ConceptsPage({ data, setData }: PageProps) {
     setData((d) => ({
       ...d,
       concepts: d.concepts.filter((x) => x.id !== c.id),
-      employees: d.employees.map((e) => ({ ...e, concepts: e.concepts.filter((a) => a.conceptId !== c.id) })),
+      employees: d.employees.map((e) => ({
+        ...e,
+        years: Object.fromEntries(
+          Object.entries(e.years).map(([y, yd]) => [y, { ...yd, concepts: yd.concepts.filter((a) => a.conceptId !== c.id) }]),
+        ),
+      })),
       positions: d.positions.map((p) => ({ ...p, concepts: p.concepts.filter((a) => a.conceptId !== c.id) })),
       increases: d.increases.map((i) => ({ ...i, conceptIds: i.conceptIds.filter((id) => id !== c.id) })),
     }));

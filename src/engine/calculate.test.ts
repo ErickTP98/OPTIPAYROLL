@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { Concept, Employee, PayrollData, Rule } from "../types";
+import type { Concept, ConceptAmount, Employee, PayrollData, Rule } from "../types";
 import { emptyData, sampleData } from "../data/seed";
 import { allMonths, onlyMonths } from "../utils";
-import { calculateBudget, groupBudgets, linesSummary } from "./calculate";
+import { calculateBudget, groupBudgets, linesSummary, summarizeYears } from "./calculate";
 
-function employee(over: Partial<Employee> = {}): Employee {
+const YEAR = emptyData().settings.year;
+
+function employee(over: Partial<Employee> & { months?: boolean[]; concepts?: ConceptAmount[] } = {}): Employee {
+  const { months = allMonths(), concepts = [], ...rest } = over;
   return {
     id: "e1", code: "E1", isVacancy: false, firstName: "A", lastName: "B", docType: "", docNumber: "",
     birthDate: "", gender: "", email: "", phone: "", address: "", hireDate: "", contractType: "",
-    positionId: "p1", months: allMonths(), custom: {}, concepts: [], ...over,
+    positionId: "p1", custom: {}, years: { [YEAR]: { months, concepts } }, ...rest,
   };
 }
 function concept(over: Partial<Concept> & { id: string; code: string }): Concept {
@@ -75,10 +78,10 @@ describe("calculateBudget", () => {
         concept({ id: "a", code: "ASIG", appliesIncrease: false }),
       ],
       increases: [
-        { id: "i1", name: "General", month: 3, percent: 10, scope: "todos", targets: [], conceptIds: [] },
-        { id: "i2", name: "Ventas", month: 6, percent: 10, scope: "area", targets: ["Ventas"], conceptIds: [] },
-        { id: "i3", name: "Otra área", month: 0, percent: 50, scope: "area", targets: ["Finanzas"], conceptIds: [] },
-        { id: "i4", name: "Solo asig", month: 9, percent: 20, scope: "trabajador", targets: ["e1"], conceptIds: ["a"] },
+        { id: "i1", year: YEAR, name: "General", month: 3, percent: 10, scope: "todos", targets: [], conceptIds: [] },
+        { id: "i2", year: YEAR, name: "Ventas", month: 6, percent: 10, scope: "area", targets: ["Ventas"], conceptIds: [] },
+        { id: "i3", year: YEAR, name: "Otra área", month: 0, percent: 50, scope: "area", targets: ["Finanzas"], conceptIds: [] },
+        { id: "i4", year: YEAR, name: "Solo asig", month: 9, percent: 20, scope: "trabajador", targets: ["e1"], conceptIds: ["a"] },
       ],
       employees: [employee({ concepts: [{ conceptId: "s", amount: 1000 }, { conceptId: "a", amount: 100 }] })],
     });
@@ -130,7 +133,7 @@ describe("calculateBudget", () => {
         rule({ id: "acc", code: "ACC", rate: 10, baseMode: "acumulado", months: onlyMonths(5, 11) }),
         rule({ id: "avg", code: "AVG", rate: 100, baseMode: "promedio", months: onlyMonths(6, 11) }),
       ],
-      increases: [{ id: "i", name: "Inc", month: 6, percent: 50, scope: "todos", targets: [], conceptIds: [] }],
+      increases: [{ id: "i", year: YEAR, name: "Inc", month: 6, percent: 50, scope: "todos", targets: [], conceptIds: [] }],
       employees: [employee({ months: onlyMonths(2, 3, 4, 5, 6, 7, 8, 9, 10, 11), concepts: [{ conceptId: "s", amount: 1000 }] })],
     });
     const acc = lineOf(d, "acc")!.months;
@@ -166,7 +169,7 @@ describe("calculateBudget", () => {
         concept({ id: "lti", code: "BONO_LTI", segment: "bono_target", targetType: "LTI", formula: "SUELDO_BASICO * TARGET / 100", months: onlyMonths(11) }),
       ],
       rules: [rule({ id: "ess", code: "ESSALUD", rate: 10 })],
-      increases: [{ id: "i", name: "Inc", month: 6, percent: 10, scope: "todos", targets: [], conceptIds: [] }],
+      increases: [{ id: "i", year: YEAR, name: "Inc", month: 6, percent: 10, scope: "todos", targets: [], conceptIds: [] }],
       employees: [
         employee({ months: onlyMonths(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), concepts: [
           { conceptId: "s", amount: 1200 }, { conceptId: "sti", amount: 2 }, { conceptId: "lti", amount: 50 },
@@ -196,19 +199,45 @@ describe("calculateBudget", () => {
     expect(calculateBudget(d).errors.some((e) => e.includes("X"))).toBe(true);
   });
 
-  it("calcula el ejemplo incluido y agrupa por puesto", () => {
+  it("calcula el ejemplo incluido por año y agrupa por puesto", () => {
     const d = sampleData();
-    const res = calculateBudget(d);
-    expect(res.errors).toEqual([]);
-    const gg = res.employees.find((e) => e.employee.id === "emp-1")!;
-    // Sueldo 12000 hasta marzo y 12600 desde abril (+5%).
-    expect(gg.lines.find((l) => l.id === "c-sueldo")!.months[3]).toBe(12600);
-    // EsSalud de marzo incluye el bono anual y el STI: (12000 + 113 + 6000 + 12000 × 3 / 12) × 9%.
-    expect(gg.lines.find((l) => l.id === "r-essalud")!.months[2]).toBe(1900.17);
-    const byPos = groupBudgets(res.employees, (b) => ({ key: b.employee.positionId, label: b.position?.name ?? "" }));
+    const r26 = calculateBudget(d, 2026);
+    const r27 = calculateBudget(d, 2027);
+    expect(r26.errors).toEqual([]);
+    const gg26 = r26.employees.find((e) => e.employee.code === "T001")!;
+    const gg27 = r27.employees.find((e) => e.employee.code === "T001")!;
+    expect(gg26.lines.find((l) => l.id === "c-sueldo")!.months[0]).toBe(18000);
+    expect(gg27.lines.find((l) => l.id === "c-sueldo")!.months[0]).toBe(18500);
+    // EsSalud de marzo 2026 incluye el bono anual y el STI: (18000 + 113 + 6000 + 18000 × 3 / 12) × 9%.
+    expect(gg26.lines.find((l) => l.id === "r-essalud")!.months[2]).toBe(2575.17);
+    // T003 solo labora en 2026.
+    expect(r26.employees.some((b) => b.employee.code === "T003")).toBe(true);
+    expect(r27.employees.some((b) => b.employee.code === "T003")).toBe(false);
+    const byPos = groupBudgets(r26.employees, (b) => ({ key: b.employee.positionId, label: b.position?.name ?? "" }));
     expect(byPos.find((g) => g.key === "pos-op")!.headcount).toBe(2);
-    const total = res.employees.reduce((s, e) => s + e.grandTotal, 0);
-    const lines = linesSummary(res.employees).reduce((s, l) => s + l.total, 0);
+    const total = r26.employees.reduce((s, e) => s + e.grandTotal, 0);
+    const lines = linesSummary(r26.employees).reduce((s, l) => s + l.total, 0);
     expect(lines).toBeCloseTo(total, 2);
+    const years = summarizeYears(d);
+    expect(years.map((y) => y.year)).toEqual([2026, 2027]);
+    expect(years[0].totals.total).toBeCloseTo(total, 2);
+  });
+
+  it("usa los montos, meses e incrementos de cada año", () => {
+    const d = data({
+      settings: { ...emptyData().settings, years: [2026, 2027], year: 2026 },
+      concepts: [concept({ id: "s", code: "SUELDO" })],
+      increases: [{ id: "i", year: 2027, name: "Inc", month: 6, percent: 10, scope: "todos", targets: [], conceptIds: [] }],
+      employees: [employee({
+        years: {
+          2026: { months: allMonths(), concepts: [{ conceptId: "s", amount: 18000 }] },
+          2027: { months: onlyMonths(0, 1, 2, 3, 4, 5, 6), concepts: [{ conceptId: "s", amount: 18500 }] },
+        },
+      })],
+    });
+    expect(calculateBudget(d, 2026).employees[0].grandTotal).toBe(18000 * 12);
+    const y27 = calculateBudget(d, 2027).employees[0].lines[0].months;
+    expect(y27.slice(5, 8)).toEqual([18500, 20350, 0]);
+    expect(calculateBudget(d, 2028).employees).toEqual([]);
   });
 });

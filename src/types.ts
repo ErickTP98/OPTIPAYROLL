@@ -3,7 +3,10 @@ export type MonthFlags = boolean[];
 
 export interface Settings {
   companyName: string;
+  /** Año que se está viendo/editando. */
   year: number;
+  /** Años presupuestados (p. ej. 2026, 2027, 2028). */
+  years: number[];
   currency: string;
 }
 
@@ -52,10 +55,17 @@ export interface Employee {
   hireDate: string;
   contractType: string;
   positionId: string;
-  /** Meses en los que el trabajador labora dentro del año presupuestado. */
-  months: MonthFlags;
   /** Valores de los campos personalizados, por id de campo. */
   custom: Record<string, string>;
+  /** Datos del trabajador para cada año presupuestado (clave = año). */
+  years: Record<string, EmployeeYear>;
+}
+
+/** Datos de un trabajador que cambian de un año a otro. */
+export interface EmployeeYear {
+  /** Meses en los que el trabajador labora dentro del año. */
+  months: MonthFlags;
+  /** Monto mensual (o TARGET) de cada concepto en el año. */
   concepts: ConceptAmount[];
 }
 
@@ -124,6 +134,8 @@ export type IncreaseScope = "todos" | "area" | "puesto" | "trabajador";
 
 export interface Increase {
   id: string;
+  /** Año presupuestado al que pertenece el incremento. */
+  year: number;
   name: string;
   /** Mes (0-11) a partir del cual rige el incremento. */
   month: number;

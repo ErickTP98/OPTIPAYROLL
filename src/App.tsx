@@ -42,9 +42,20 @@ export function App() {
           <span className="logo">OP</span>
           <div>
             <strong>OptiPayroll</strong>
-            <span className="muted small">{data.settings.companyName || "Presupuesto de nóminas"} · {data.settings.year}</span>
+            <span className="muted small">{data.settings.companyName || "Presupuesto de nóminas"}</span>
           </div>
         </div>
+        <label className="year-switch">
+          <span className="muted small">Año</span>
+          <select
+            id="year-select"
+            aria-label="Año del presupuesto"
+            value={data.settings.year}
+            onChange={(e) => setData((d) => ({ ...d, settings: { ...d.settings, year: Number(e.target.value) } }))}
+          >
+            {[...data.settings.years].sort((x, y) => x - y).map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </label>
         <nav className="nav">
           {PAGES.map((p) => (
             <button key={p.id} className={p.id === page ? "active" : ""} onClick={() => go(p.id)}>

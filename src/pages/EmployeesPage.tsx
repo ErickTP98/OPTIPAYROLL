@@ -1,15 +1,16 @@
-import { useMemo, useState } from "react";
-import type { CustomField, Employee } from "../types";
-import { allMonths, formatMoney, monthsLabel, uid } from "../utils";
-import { ConceptAmounts, fixedMonthlyAmount } from "../components/ConceptAmounts";
+import { Fragment, useMemo, useState } from "react";
+import type { CustomField, Employee, EmployeeYear } from "../types";
+import { allMonths, employeeYear, formatMoney, monthsLabel, uid, withEmployeeYear } from "../utils";
+import { fixedMonthlyAmount, YearlyConceptAmounts } from "../components/ConceptAmounts";
 import { EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
-import { ask, confirmDelete } from "../components/dialogs";
+import { ask, confirmDelete, notify } from "../components/dialogs";
 import type { PageProps } from "./types";
 
-const newEmployee = (n: number): Employee => ({
+const newEmployee = (n: number, year: number): Employee => ({
   id: uid(), code: `T${String(n).padStart(3, "0")}`, isVacancy: false, firstName: "", lastName: "",
   docType: "DNI", docNumber: "", birthDate: "", gender: "", email: "", phone: "", address: "",
-  hireDate: "", contractType: "", positionId: "", months: allMonths(), custom: {}, concepts: [],
+  hireDate: "", contractType: "", positionId: "", custom: {},
+  years: { [year]: { months: allMonths(), concepts: [] } },
 });
 
 export const employeeName = (e: Employee) =>
@@ -20,6 +21,7 @@ export function EmployeesPage({ data, setData }: PageProps) {
   const [query, setQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
   const cur = data.settings.currency;
+  const year = data.settings.year;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,13 +56,13 @@ export function EmployeesPage({ data, setData }: PageProps) {
     <>
       <PageHeader
         title="Trabajadores y vacantes"
-        description="Datos personales, puesto asignado, meses que labora y montos de cada concepto de nómina."
+        description="Datos personales, puesto asignado y, por cada año, los meses que labora y los montos de cada concepto."
         actions={
           <>
-            <button className="btn" onClick={() => setEditing({ ...newEmployee(data.employees.length + 1), isVacancy: true, code: `V${String(data.employees.length + 1).padStart(3, "0")}` })}>
+            <button className="btn" onClick={() => setEditing({ ...newEmployee(data.employees.length + 1, year), isVacancy: true, code: `V${String(data.employees.length + 1).padStart(3, "0")}` })}>
               + Vacante
             </button>
-            <button className="btn primary" onClick={() => setEditing(newEmployee(data.employees.length + 1))}>+ Nuevo trabajador</button>
+            <button className="btn primary" onClick={() => setEditing(newEmployee(data.employees.length + 1, year))}>+ Nuevo trabajador</button>
           </>
         }
       />
@@ -79,7 +81,7 @@ export function EmployeesPage({ data, setData }: PageProps) {
             <thead>
               <tr>
                 <th>Código</th><th>Nombre</th><th>Documento</th><th>Puesto</th><th>Área</th>
-                <th>Meses que labora</th><th className="num">Monto mensual</th><th />
+                <th>Meses que labora ({year})</th><th className="num">Monto mensual ({year})</th><th />
               </tr>
             </thead>
             <tbody>
@@ -95,8 +97,10 @@ export function EmployeesPage({ data, setData }: PageProps) {
                     <td>{e.docNumber ? `${e.docType} ${e.docNumber}` : "—"}</td>
                     <td>{pos?.name ?? <span className="badge danger">sin puesto</span>}</td>
                     <td>{pos?.area}</td>
-                    <td className="muted small">{monthsLabel(e.months)}</td>
-                    <td className="num">{formatMoney(fixedMonthlyAmount(data.concepts, e.concepts), cur)}</td>
+                    <td className="muted small">
+                      {employeeYear(e, year).months.some(Boolean) ? monthsLabel(employeeYear(e, year).months) : <span className="badge warn">no labora en {year}</span>}
+                    </td>
+                    <td className="num">{formatMoney(fixedMonthlyAmount(data.concepts, employeeYear(e, year).concepts), cur)}</td>
                     <td className="row-actions">
                       <button className="btn-link" onClick={() => setEditing(e)}>Editar</button>
                       <button className="btn-link" onClick={() => duplicate(e)}>Duplicar</button>
@@ -140,10 +144,27 @@ function EmployeeModal({ employee, data, onSave, onClose }: {
   const position = data.positions.find((p) => p.id === e.positionId);
   const valid = e.code.trim() !== "" && e.positionId !== "" && (e.isVacancy || e.firstName.trim() !== "" || e.lastName.trim() !== "");
 
-  const copyFromPosition = async () => {
-    if (!position) return;
-    if (e.concepts.length && !(await ask("Se reemplazarán los montos actuales por los del puesto. ¿Continuar?"))) return;
-    set({ concepts: position.concepts.map((c) => ({ ...c })) });
+  const years = [...data.settings.years].sort((a, b) => a - b);
+  const setYear = (year: number, patch: Partial<EmployeeYear>) => setE((cur) => withEmployeeYear(cur, year, patch));
+
+  const copyFromPosition = async (year: number) => {
+    if (!position) {
+      notify("Primero asigna un puesto en la pestaña «Puesto y meses».");
+      return;
+    }
+    if (employeeYear(e, year).concepts.length && !(await ask(`Se reemplazarán los montos de ${year} por los del puesto. ¿Continuar?`))) return;
+    setYear(year, { concepts: position.concepts.map((c) => ({ ...c })) });
+  };
+
+  const copyFromYear = async (year: number, from: number) => {
+    if (employeeYear(e, year).concepts.length && !(await ask(`Se reemplazarán los montos de ${year} por los de ${from}. ¿Continuar?`))) return;
+    const src = employeeYear(e, from);
+    const target = employeeYear(e, year);
+    setYear(year, {
+      concepts: src.concepts.map((c) => ({ ...c })),
+      // Si aún no tiene meses en el año destino, también se copian los meses.
+      months: target.months.some(Boolean) ? target.months : [...src.months],
+    });
   };
 
   return (
@@ -221,19 +242,32 @@ function EmployeeModal({ employee, data, onSave, onClose }: {
               </datalist>
             </Field>
           </div>
-          <h3>Meses que labora en {data.settings.year}</h3>
-          <p className="muted">Solo se presupuestan conceptos, beneficios y aportes en los meses marcados.</p>
-          <MonthPicker value={e.months} onChange={(months) => set({ months })} />
+          <h3>Meses que labora por año</h3>
+          <p className="muted">Solo se presupuestan conceptos, beneficios y aportes en los meses marcados. Desmarca todo un año si no labora.</p>
+          <div className="year-months">
+            {years.map((y) => (
+              <Fragment key={y}>
+                <strong>{y}</strong>
+                <MonthPicker value={employeeYear(e, y).months} onChange={(months) => setYear(y, { months })} />
+              </Fragment>
+            ))}
+          </div>
         </>
       )}
 
       {tab === "conceptos" && (
         <>
-          <div className="card-title">
-            <p className="muted">Monto mensual de cada concepto (antes de incrementos).</p>
-            <button className="btn" disabled={!position} onClick={copyFromPosition}>Copiar montos del puesto</button>
-          </div>
-          <ConceptAmounts concepts={data.concepts} value={e.concepts} onChange={(concepts) => set({ concepts })} />
+          <p className="muted">
+            Monto mensual de cada concepto por año (antes de incrementos) y valor TARGET de los bonos. Ej.: sueldo 18,000 en 2026 y 18,500 en 2027.
+          </p>
+          <YearlyConceptAmounts
+            concepts={data.concepts}
+            years={years}
+            valueOf={(y) => employeeYear(e, y).concepts}
+            onChange={(y, concepts) => setYear(y, { concepts })}
+            onCopyPosition={copyFromPosition}
+            onCopyPrevious={copyFromYear}
+          />
         </>
       )}
     </Modal>

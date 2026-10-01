@@ -7,16 +7,20 @@ remuneraciones, beneficios sociales y aportes patronales, mes a mes, con increme
 
 | Módulo | Qué permite |
 | --- | --- |
-| **Empresa** | Nombre, año y moneda del presupuesto. **Campos personalizados** del trabajador (texto, número, fecha o lista: banco, cuenta, sistema de pensiones, etc.). Respaldo/importación en JSON. |
+| **Empresa** | Nombre y moneda. **Años presupuestados** (2026, 2027, …): agregar un año copiando otro con ajuste % opcional, o eliminarlo. **Campos personalizados** del trabajador (texto, número, fecha o lista: banco, cuenta, sistema de pensiones, etc.). Respaldo/importación en JSON. |
 | **Puestos** | Código, nombre, área, centro de costo, categoría y montos referenciales por concepto (plantilla). |
-| **Trabajadores** | Datos personales (nombres, documento, nacimiento, contacto, ingreso, contrato + campos personalizados), puesto asignado, **meses que labora** en el año y monto mensual de cada concepto. También permite registrar **vacantes** para presupuestar puestos por cubrir. |
+| **Trabajadores** | Datos personales (nombres, documento, nacimiento, contacto, ingreso, contrato + campos personalizados), puesto asignado, **meses que labora** y monto mensual de cada concepto **por año** (p. ej. sueldo 18,000 en 2026 y 18,500 en 2027), con la variación respecto del año anterior. También permite registrar **vacantes** para presupuestar puestos por cubrir. |
 | **Conceptos** | Conceptos de nómina con tipo, meses en que se pagan (p. ej. bono solo en marzo), indicador **afecto a incremento** y una matriz de **indicadores de afectación** a cada beneficio social y aporte patronal. |
 | **Bonos target** | Segmento propio dentro de Conceptos, dividido en **Bono STI** (corto plazo) y **Bono LTI** (largo plazo). Cada bono tiene una fórmula sobre el **sueldo básico del mes** y un valor `TARGET` por trabajador o puesto. |
 | **Beneficios y aportes** | Reglas de cálculo: porcentaje de la base o **fórmula personalizada**, base mínima y tope, meses de registro, modo de base (mensual, acumulada o promedio) y posibilidad de sumar a la base el resultado de otras reglas. |
-| **Incrementos** | Aumentos porcentuales desde un mes, para todos, por área, por puesto o por trabajador, y sobre todos los conceptos afectos o sobre conceptos específicos. Se acumulan de forma compuesta. |
-| **Presupuesto** | Totales anuales, resumen mensual, vistas por concepto, trabajador, puesto, área y centro de costo, detalle de cálculo por trabajador (incluidas las bases de cada regla) y exportación a CSV (Excel). |
+| **Incrementos** | Aumentos porcentuales de cada año desde un mes, para todos, por área, por puesto o por trabajador, y sobre todos los conceptos afectos o sobre conceptos específicos. Se acumulan de forma compuesta. |
+| **Presupuesto** | Totales del año seleccionado, **comparativo por año**, resumen mensual, vistas por concepto, trabajador, puesto, área y centro de costo, detalle de cálculo por trabajador (incluidas las bases de cada regla) y exportación a CSV (Excel). |
 
 ## Cómo se calcula
+
+Cada año se calcula por separado con sus propios montos, meses laborados e incrementos (el selector «Año» de la barra
+superior elige el año que ves y editas). Conceptos, reglas, bonos target y puestos son comunes a todos los años.
+Un trabajador sin meses marcados en un año no se presupuesta en ese año.
 
 Para cada trabajador y cada mes del año:
 

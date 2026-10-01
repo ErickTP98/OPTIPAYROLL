@@ -1,5 +1,6 @@
 import type { Concept, Employee, Increase, PayrollData, Position, Rule } from "../types";
 import { compileFormula, FormulaError, type CompiledFormula } from "./formula";
+import { employeeYear } from "../utils";
 
 export const MONTHS = 12;
 
@@ -26,6 +27,7 @@ export interface EmployeeBudget {
 }
 
 export interface BudgetResult {
+  year: number;
   employees: EmployeeBudget[];
   /** Mensajes de configuración (fórmulas inválidas, dependencias circulares, etc.). */
   errors: string[];
@@ -177,18 +179,21 @@ export function calculateEmployee(
   ordered: PreparedRule[],
   errors: string[],
   bonusFormulas: Map<string, CompiledFormula> = new Map(),
+  year: number = data.settings.year,
 ): EmployeeBudget {
   const position = data.positions.find((p) => p.id === e.positionId);
-  const works = Array.from({ length: MONTHS }, (_, m) => !!e.months[m]);
+  const yd = employeeYear(e, year);
+  const increases = data.increases.filter((i) => i.year === year);
+  const works = Array.from({ length: MONTHS }, (_, m) => !!yd.months[m]);
   const monthsWorked = works.filter(Boolean).length;
 
   const conceptLines = new Map<string, BudgetLine>();
-  const assigned = (c: Concept) => e.concepts.filter((a) => a.conceptId === c.id).reduce((s, a) => s + (a.amount || 0), 0);
+  const assigned = (c: Concept) => yd.concepts.filter((a) => a.conceptId === c.id).reduce((s, a) => s + (a.amount || 0), 0);
   for (const c of data.concepts) {
     if (isTargetBonus(c)) continue;
     const amount = assigned(c);
     if (!amount) continue;
-    const factors = increaseFactors(data.increases, e, position, c);
+    const factors = increaseFactors(increases, e, position, c);
     const months = works.map((w, m) => (w && c.months[m] ? round2(amount * factors[m]) : 0));
     conceptLines.set(c.id, { id: c.id, code: c.code, name: c.name, group: "concepto", months, total: round2(sum(months)) });
   }
@@ -320,11 +325,41 @@ export function calculateEmployee(
   return { employee: e, position, lines, bases, totals, grandTotal: round2(sum(totals.total)) };
 }
 
-export function calculateBudget(data: PayrollData): BudgetResult {
+/**
+ * Presupuesto de un año. Solo se incluyen los trabajadores que laboran al menos un mes ese año.
+ */
+export function calculateBudget(data: PayrollData, year: number = data.settings.year): BudgetResult {
   const { ordered, errors } = prepareRules(data);
   const bonusFormulas = prepareTargetBonuses(data, errors);
-  const employees = data.employees.map((e) => calculateEmployee(data, e, ordered, errors, bonusFormulas));
-  return { employees, errors };
+  const employees = data.employees
+    .filter((e) => employeeYear(e, year).months.some(Boolean))
+    .map((e) => calculateEmployee(data, e, ordered, errors, bonusFormulas, year));
+  return { year, employees, errors };
+}
+
+export interface YearSummary {
+  year: number;
+  headcount: number;
+  vacancies: number;
+  totals: Record<LineGroup | "total", number>;
+}
+
+/** Totales anuales de cada año presupuestado (comparativo multianual). */
+export function summarizeYears(data: PayrollData, items?: (b: EmployeeBudget) => boolean): YearSummary[] {
+  return [...data.settings.years].sort((a, b) => a - b).map((year) => {
+    const res = calculateBudget(data, year);
+    const list = items ? res.employees.filter(items) : res.employees;
+    const totals: YearSummary["totals"] = { concepto: 0, bono: 0, beneficio: 0, aporte: 0, total: 0 };
+    for (const b of list) {
+      for (const k of Object.keys(totals) as (keyof typeof totals)[]) totals[k] = round2(totals[k] + sum(b.totals[k]));
+    }
+    return {
+      year,
+      headcount: list.filter((b) => !b.employee.isVacancy).length,
+      vacancies: list.filter((b) => b.employee.isVacancy).length,
+      totals,
+    };
+  });
 }
 
 export interface GroupSummary {

@@ -240,3 +240,17 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); cursor: poin
 .badge.info { background: var(--primary-soft); color: var(--primary); }
 .bonus-group { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
 .bonus-group h4 { margin: 0 0 2px; font-size: 0.95rem; }
+.yearly td:first-child { min-width: 220px; }
+.yearly .input-num { max-width: 130px; }
+.year-head { font-size: 0.95rem; color: var(--text); }
+.year-actions { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.yearly .section-row td { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; background: var(--surface-2); }
+.delta { display: block; font-size: 0.72rem; margin-top: 2px; }
+.delta.up { color: var(--benefit-fg); }
+.delta.down { color: var(--danger); }
+.year-switch { display: flex; align-items: center; gap: 6px; }
+.year-switch select { width: auto; padding: 5px 8px; font-weight: 600; }
+.year-months { display: grid; grid-template-columns: 70px 1fr; gap: 10px 12px; align-items: center; }
+.year-months strong { font-variant-numeric: tabular-nums; }
+.delta.inline { display: inline; font-size: 0.86rem; font-weight: 600; }
+.selected-row td { background: var(--primary-soft); }

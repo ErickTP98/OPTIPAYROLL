@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import type { Concept, PayrollData } from "./types";
+import type { Concept, ConceptAmount, Employee, PayrollData } from "./types";
+
+interface LegacyEmployee {
+  months?: boolean[];
+  concepts?: ConceptAmount[];
+}
 import { sampleData } from "./data/seed";
 
 const STORAGE_KEY = "optipayroll:data";
@@ -8,20 +13,35 @@ const STORAGE_KEY = "optipayroll:data";
 export function normalizeData(raw: unknown): PayrollData {
   const d = raw as Partial<PayrollData>;
   if (!d || typeof d !== "object" || !d.settings) throw new Error("El archivo no tiene el formato de OptiPayroll");
-  const months = (m: unknown) => (Array.isArray(m) && m.length === 12 ? m.map(Boolean) : new Array(12).fill(true));
+  const months = (m: unknown, fill = true) =>
+    Array.isArray(m) && m.length === 12 ? m.map(Boolean) : new Array(12).fill(fill);
+  const year = d.settings.year ?? new Date().getFullYear();
+  const years = [...new Set([...(d.settings.years ?? []), year])].sort((a, b) => a - b);
   return {
     version: 1,
     settings: {
       companyName: d.settings.companyName ?? "",
-      year: d.settings.year ?? new Date().getFullYear(),
+      year,
+      years,
       currency: d.settings.currency ?? "",
     },
     customFields: (d.customFields ?? []).map((f) => ({ ...f, options: f.options ?? [] })),
     positions: (d.positions ?? []).map((p) => ({ ...p, concepts: p.concepts ?? [] })),
-    employees: (d.employees ?? []).map((e) => ({ ...e, months: months(e.months), custom: e.custom ?? {}, concepts: e.concepts ?? [] })),
+    employees: (d.employees ?? []).map((raw) => {
+      // Versiones anteriores guardaban meses y montos directamente en el trabajador (un solo año).
+      const { months: legacyMonths, concepts: legacyConcepts, ...e } = raw as Employee & LegacyEmployee;
+      const yearsData: Employee["years"] = {};
+      for (const [y, yd] of Object.entries(e.years ?? {})) {
+        yearsData[y] = { months: months(yd.months, false), concepts: yd.concepts ?? [] };
+      }
+      if (!e.years && (legacyMonths || legacyConcepts)) {
+        yearsData[String(year)] = { months: months(legacyMonths), concepts: legacyConcepts ?? [] };
+      }
+      return { ...e, custom: e.custom ?? {}, years: yearsData };
+    }),
     concepts: normalizeConcepts(d.concepts ?? []),
     rules: (d.rules ?? []).map((r) => ({ ...r, months: months(r.months), includeRules: r.includeRules ?? [] })),
-    increases: (d.increases ?? []).map((i) => ({ ...i, targets: i.targets ?? [], conceptIds: i.conceptIds ?? [] })),
+    increases: (d.increases ?? []).map((i) => ({ ...i, year: i.year ?? year, targets: i.targets ?? [], conceptIds: i.conceptIds ?? [] })),
   };
 }
 

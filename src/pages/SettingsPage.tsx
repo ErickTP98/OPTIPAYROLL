@@ -2,7 +2,9 @@ import { useRef, useState } from "react";
 import type { CustomField, CustomFieldType } from "../types";
 import { emptyData, sampleData } from "../data/seed";
 import { normalizeData } from "../store";
-import { parseNumber, uid } from "../utils";
+import { formatMoney, parseNumber, uid } from "../utils";
+import { addBudgetYear, removeBudgetYear } from "../engine/years";
+import { summarizeYears } from "../engine/calculate";
 import { Field, Modal, PageHeader } from "../components/ui";
 import { ask, confirmDelete, exportFile, notify } from "../components/dialogs";
 import type { PageProps } from "./types";
@@ -68,14 +70,13 @@ export function SettingsPage({ data, setData }: PageProps) {
           <Field label="Nombre de la empresa">
             <input value={s.companyName} onChange={(e) => setSettings({ companyName: e.target.value })} />
           </Field>
-          <Field label="Año del presupuesto">
-            <input type="number" value={s.year} onChange={(e) => setSettings({ year: parseNumber(e.target.value) })} />
-          </Field>
           <Field label="Moneda (símbolo)">
             <input value={s.currency} onChange={(e) => setSettings({ currency: e.target.value })} />
           </Field>
         </div>
       </section>
+
+      <BudgetYears data={data} setData={setData} />
 
       <section className="card">
         <div className="card-title">
@@ -193,5 +194,124 @@ function CustomFieldModal({ field, onSave, onClose }: {
         )}
       </div>
     </Modal>
+  );
+}
+
+function BudgetYears({ data, setData }: PageProps) {
+  const years = [...data.settings.years].sort((a, b) => a - b);
+  const last = years[years.length - 1];
+  const [adding, setAdding] = useState(false);
+  const [newYear, setNewYear] = useState(last + 1);
+  const [from, setFrom] = useState<string>(String(last));
+  const [adjust, setAdjust] = useState(0);
+  const [copyIncreases, setCopyIncreases] = useState(true);
+  const summary = summarizeYears(data);
+  const cur = data.settings.currency;
+
+  const startAdding = () => {
+    setNewYear(last + 1);
+    setFrom(String(last));
+    setAdjust(0);
+    setAdding(true);
+  };
+
+  const add = () => {
+    setData((d) => addBudgetYear(d, newYear, { from: from ? Number(from) : undefined, adjustPercent: adjust, copyIncreases }));
+    setAdding(false);
+  };
+
+  const remove = async (y: number) => {
+    if (years.length === 1) {
+      notify("Debe quedar al menos un año presupuestado.");
+      return;
+    }
+    if (await confirmDelete(`el año ${y} con todos sus montos, meses e incrementos`)) setData((d) => removeBudgetYear(d, y));
+  };
+
+  const newYearValid = Number.isInteger(newYear) && newYear > 1900 && newYear < 2200 && !years.includes(newYear);
+
+  return (
+    <section className="card">
+      <div className="card-title">
+        <div>
+          <h3>Años presupuestados</h3>
+          <p className="muted small">
+            Cada año guarda sus propios montos por concepto, meses laborados e incrementos. Conceptos, reglas y puestos son comunes a todos los años.
+          </p>
+        </div>
+        <button className="btn" onClick={startAdding}>+ Agregar año</button>
+      </div>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Año</th><th className="num">Trabajadores</th><th className="num">Vacantes</th>
+              <th className="num">Incrementos</th><th className="num">Gasto total</th><th />
+            </tr>
+          </thead>
+          <tbody>
+            {summary.map((y) => (
+              <tr key={y.year}>
+                <td>
+                  <strong>{y.year}</strong>
+                  {y.year === data.settings.year && <span className="badge info">seleccionado</span>}
+                </td>
+                <td className="num">{y.headcount}</td>
+                <td className="num">{y.vacancies}</td>
+                <td className="num">{data.increases.filter((i) => i.year === y.year).length}</td>
+                <td className="num">{formatMoney(y.totals.total, cur)}</td>
+                <td className="row-actions">
+                  {y.year !== data.settings.year && (
+                    <button className="btn-link" onClick={() => setData((d) => ({ ...d, settings: { ...d.settings, year: y.year } }))}>Seleccionar</button>
+                  )}
+                  <button className="btn-link danger" onClick={() => remove(y.year)}>Eliminar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {adding && (
+        <Modal
+          title="Agregar año"
+          onClose={() => setAdding(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setAdding(false)}>Cancelar</button>
+              <button className="btn primary" disabled={!newYearValid} onClick={add}>Agregar {newYearValid ? newYear : ""}</button>
+            </>
+          }
+        >
+          <div className="grid">
+            <Field label="Año" hint={years.includes(newYear) ? "Ese año ya existe" : undefined}>
+              <input type="number" value={newYear} onChange={(e) => setNewYear(Math.trunc(parseNumber(e.target.value)))} />
+            </Field>
+            <Field label="Copiar datos de">
+              <select value={from} onChange={(e) => setFrom(e.target.value)}>
+                <option value="">No copiar (año vacío)</option>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </Field>
+            {from && (
+              <Field label="Ajuste a los montos (%)" hint="Opcional. No se aplica a los valores TARGET de los bonos.">
+                <input type="number" step="0.01" value={adjust} onChange={(e) => setAdjust(parseNumber(e.target.value))} />
+              </Field>
+            )}
+            {from && (
+              <label className="field check-field span-3">
+                <input type="checkbox" checked={copyIncreases} onChange={(e) => setCopyIncreases(e.target.checked)} />
+                Copiar también los incrementos de {from}
+              </label>
+            )}
+          </div>
+          <p className="muted small">
+            {from
+              ? `Se copiarán los meses laborados y los montos de cada trabajador de ${from}${adjust ? ` con un ajuste de ${adjust}%` : ""}. Luego puedes editar cada monto en la ficha del trabajador.`
+              : "El año se crea sin datos: ingresa los montos y meses de cada trabajador en su ficha."}
+          </p>
+        </Modal>
+      )}
+    </section>
   );
 }
