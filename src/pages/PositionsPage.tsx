@@ -4,6 +4,7 @@ import { formatMoney, uid } from "../utils";
 import { ConceptAmounts, fixedMonthlyAmount } from "../components/ConceptAmounts";
 import { EmptyState, Field, Modal, PageHeader } from "../components/ui";
 import { confirmDelete, notify } from "../components/dialogs";
+import { ImportDialog } from "../components/ImportDialog";
 import type { PageProps } from "./types";
 
 const newPosition = (): Position => ({
@@ -12,6 +13,7 @@ const newPosition = (): Position => ({
 
 export function PositionsPage({ data, setData }: PageProps) {
   const [editing, setEditing] = useState<Position | null>(null);
+  const [importing, setImporting] = useState(false);
   const cur = data.settings.currency;
 
   const save = (p: Position) => {
@@ -36,7 +38,12 @@ export function PositionsPage({ data, setData }: PageProps) {
       <PageHeader
         title="Puestos de trabajo"
         description="Define los puestos, su área y centro de costo, y los montos referenciales de cada concepto."
-        actions={<button className="btn primary" onClick={() => setEditing(newPosition())}>+ Nuevo puesto</button>}
+        actions={
+          <>
+            <button className="btn" onClick={() => setImporting(true)}>Importar</button>
+            <button className="btn primary" onClick={() => setEditing(newPosition())}>+ Nuevo puesto</button>
+          </>
+        }
       />
       {data.positions.length === 0 ? (
         <EmptyState>Aún no hay puestos registrados.</EmptyState>
@@ -74,6 +81,17 @@ export function PositionsPage({ data, setData }: PageProps) {
             </tbody>
           </table>
         </div>
+      )}
+      {importing && (
+        <ImportDialog
+          data={data}
+          kind="puestos"
+          onApply={(next) => {
+            setData(next);
+            setImporting(false);
+          }}
+          onClose={() => setImporting(false)}
+        />
       )}
       {editing && <PositionModal position={editing} data={data} onSave={save} onClose={() => setEditing(null)} />}
     </>

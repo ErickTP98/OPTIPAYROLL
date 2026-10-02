@@ -379,3 +379,10 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); cursor: poin
 .palette-swatches { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
 .palette-swatches span { flex: 1; height: 28px; }
 .palette-name { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+.import-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.import-steps h3 { margin-top: 0; }
+.dropzone { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px; border: 2px dashed var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.dropzone.over { border-color: var(--primary); background: var(--primary-soft); }
+.import-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.import-summary .kpi-value { font-size: 1.2rem; }
+@media (max-width: 760px) { .import-steps { grid-template-columns: 1fr; } }

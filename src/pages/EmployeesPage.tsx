@@ -5,6 +5,7 @@ import { fixedMonthlyAmount, YearlyConceptAmounts } from "../components/ConceptA
 import { EmptyState, Field, Modal, MonthPicker, PageHeader } from "../components/ui";
 import { ask, confirmDelete, notify } from "../components/dialogs";
 import { exportExcel } from "../export/save";
+import { ImportDialog } from "../components/ImportDialog";
 import type { PageProps } from "./types";
 
 const newEmployee = (n: number, year: number): Employee => ({
@@ -19,6 +20,7 @@ export const employeeName = (e: Employee) =>
 
 export function EmployeesPage({ data, setData }: PageProps) {
   const [editing, setEditing] = useState<Employee | null>(null);
+  const [importing, setImporting] = useState(false);
   const [query, setQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
   const cur = data.settings.currency;
@@ -60,6 +62,7 @@ export function EmployeesPage({ data, setData }: PageProps) {
         description="Datos personales, puesto asignado y, por cada año, los meses que labora y los montos de cada concepto."
         actions={
           <>
+            <button className="btn" onClick={() => setImporting(true)}>Importar</button>
             <button className="btn" onClick={() => exportExcel(data)}>Exportar a Excel</button>
             <button className="btn" onClick={() => setEditing({ ...newEmployee(data.employees.length + 1, year), isVacancy: true, code: `V${String(data.employees.length + 1).padStart(3, "0")}` })}>
               + Vacante
@@ -114,6 +117,17 @@ export function EmployeesPage({ data, setData }: PageProps) {
             </tbody>
           </table>
         </div>
+      )}
+      {importing && (
+        <ImportDialog
+          data={data}
+          kind="trabajadores"
+          onApply={(next) => {
+            setData(next);
+            setImporting(false);
+          }}
+          onClose={() => setImporting(false)}
+        />
       )}
       {editing && <EmployeeModal employee={editing} data={data} onSave={save} onClose={() => setEditing(null)} />}
     </>
